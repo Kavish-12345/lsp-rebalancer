@@ -1,0 +1,35 @@
+name: contracts-forge-tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  Test:
+    name: Contracts Forge Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install forge dependencies
+        run: forge install
+        working-directory: ./contracts
+      
+      - name: Copy .env.example to .env
+        run: cp contracts/.env.example contracts/.env
+        
+      - name: Run tests
+        run: forge test -vvv
+        working-directory: ./contracts
+
+    
+      - name: Enforce Formatting
+        run: forge fmt --check
+        working-directory: ./contracts
