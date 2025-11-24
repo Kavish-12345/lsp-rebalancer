@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
 
-interface IIncredibleSquaringTaskManager {
+interface IRebalanceTaskManager {
     // EVENTS
     event NewTaskCreated(uint32 indexed taskIndex, Task task);
 
@@ -18,16 +18,12 @@ interface IIncredibleSquaringTaskManager {
 
     // STRUCTS
     struct Task {
-        uint256 numberToBeSquared;
+        address [] lpaddresses;
+        uint256 lstrate;
         uint32 taskCreatedBlock;
-        // task submitter decides on the criteria for a task to be completed
-        // note that this does not mean the task was "correctly" answered (i.e. the number was squared correctly)
-        //      this is for the challenge logic to verify
-        // task is completed (and contract will accept its TaskResponse) when each quorumNumbers specified here
-        // are signed by at least quorumThresholdPercentage of the operators
-        // note that we set the quorumThresholdPercentage to be the same for all quorumNumbers, but this could be changed
-        bytes quorumNumbers;
-        uint32 quorumThresholdPercentage;
+        bytes quorumNumbers; // this is a list of operator public keys that are expected to sign the task response
+        uint32 quorumThresholdPercentage; // this is the percentage of operators that need to sign the
+        // task response for the task to be considered completed. 
     }
 
     // Task response is hashed and signed by operators.
@@ -35,8 +31,10 @@ interface IIncredibleSquaringTaskManager {
     struct TaskResponse {
         // Can be obtained by the operator from the event NewTaskCreated.
         uint32 referenceTaskIndex;
-        // This is just the response that the operator has to compute by itself.
-        uint256 numberSquared;
+        bytes32 batchTxHash;
+        uint256 totalGasUsed;
+        uint8 successCount; // number of Lp'S Rebalanced successfully
+        
     }
 
     // Extra information related to taskResponse, which is filled inside the contract.
@@ -50,7 +48,8 @@ interface IIncredibleSquaringTaskManager {
     // FUNCTIONS
     // NOTE: this function creates new task.
     function createNewTask(
-        uint256 numberToBeSquared,
+        address [] calldata lpAddresses,
+        uint256 lstRate,
         uint32 quorumThresholdPercentage,
         bytes calldata quorumNumbers
     ) external;

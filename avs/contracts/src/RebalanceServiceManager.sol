@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@eigenlayer/contracts/libraries/BytesLib.sol";
-import "./IIncredibleSquaringTaskManager.sol";
+import "./IRebalanceTaskManager.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import {
     IAllocationManager,
@@ -17,19 +17,19 @@ import {ISlashingRegistryCoordinator} from
  * @title Primary entrypoint for procuring services from IncredibleSquaring.
  * @author Layr Labs, Inc.
  */
-contract IncredibleSquaringServiceManager is ServiceManagerBase {
+contract RebalanceServiceManager is ServiceManagerBase {
     using BytesLib for bytes;
 
-    IIncredibleSquaringTaskManager public immutable incredibleSquaringTaskManager;
+    IRebalanceTaskManager public immutable rebalanceTaskManager;
 
     /// @notice when applied to a function, ensures that the function is only callable by the `registryCoordinator`.
-    modifier onlyIncredibleSquaringTaskManager() {
-        require(
-            msg.sender == address(incredibleSquaringTaskManager),
-            "onlyIncredibleSquaringTaskManager: not from credible squaring task manager"
-        );
-        _;
-    }
+    modifier onlyRebalanceTaskManager() {
+    require(
+        msg.sender == address(rebalanceTaskManager),
+        "onlyRebalanceTaskManager: not from rebalance task manager"
+    );
+    _;
+}
 
     constructor(
         IAVSDirectory _avsDirectory,
@@ -38,7 +38,7 @@ contract IncredibleSquaringServiceManager is ServiceManagerBase {
         address rewards_coordinator,
         IAllocationManager allocationManager,
         IPermissionController _permissionController,
-        IIncredibleSquaringTaskManager _incredibleSquaringTaskManager
+        IRebalanceTaskManager _rebalanceTaskManager
     )
         ServiceManagerBase(
             _avsDirectory,
@@ -49,7 +49,7 @@ contract IncredibleSquaringServiceManager is ServiceManagerBase {
             allocationManager
         )
     {
-        incredibleSquaringTaskManager = _incredibleSquaringTaskManager;
+        rebalanceTaskManager = _rebalanceTaskManager;
     }
 
     function initialize(address initialOwner, address rewardsInitiator) external initializer {

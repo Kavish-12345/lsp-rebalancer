@@ -15,7 +15,7 @@ import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRe
 import {InstantSlasher} from "@eigenlayer-middleware/src/slashers/InstantSlasher.sol";
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 // import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
-import "./IIncredibleSquaringTaskManager.sol";
+import "./IRebalancingTaskManager.sol";
 import {IAllocationManagerTypes} from "@eigenlayer/contracts/interfaces/IAllocationManager.sol";
 import {OperatorSet} from "@eigenlayer/contracts/libraries/OperatorSetLib.sol";
 
@@ -25,7 +25,7 @@ contract IncredibleSquaringTaskManager is
     Pausable,
     BLSSignatureChecker,
     OperatorStateRetriever,
-    IIncredibleSquaringTaskManager
+    IRebalancingTaskTaskManager
 {
     using BN254 for BN254.G1Point;
 
@@ -97,18 +97,17 @@ contract IncredibleSquaringTaskManager is
     /* FUNCTIONS */
     // NOTE: this function creates new task, assigns it a taskId
     function createNewTask(
-        uint256 numberToBeSquared,
+        address [] calldata lpAddresses,
+        uint256 lstRate,
         uint32 quorumThresholdPercentage,
         bytes calldata quorumNumbers
     ) external onlyTaskGenerator {
-        // create a new task struct
         Task memory newTask;
-        newTask.numberToBeSquared = numberToBeSquared;
-        newTask.taskCreatedBlock = uint32(block.number);
-        newTask.quorumThresholdPercentage = quorumThresholdPercentage;
+        newTask.lpAddresses = lpAddresses;
+        newTask.lstRate = lstRate;
         newTask.quorumNumbers = quorumNumbers;
+        newTask.quorumThresholdPercentage = quorumThresholdPercentage;
 
-        // store hash of task onchain, emit event, and increase taskNum
         allTaskHashes[latestTaskNum] = keccak256(abi.encode(newTask));
         emit NewTaskCreated(latestTaskNum, newTask);
         latestTaskNum = latestTaskNum + 1;
@@ -179,8 +178,6 @@ contract IncredibleSquaringTaskManager is
         BN254.G1Point[] memory pubkeysOfNonSigningOperators
     ) external {
         uint32 referenceTaskIndex = taskResponse.referenceTaskIndex;
-        uint256 numberToBeSquared = task.numberToBeSquared;
-        // some logical checks
         require(
             allTaskResponses[referenceTaskIndex] != bytes32(0), "Task hasn't been responded to yet"
         );
@@ -200,9 +197,7 @@ contract IncredibleSquaringTaskManager is
             "The challenge period for this task has already expired."
         );
 
-        // // logic for checking whether challenge is valid or not
-        uint256 actualSquaredOutput = numberToBeSquared * numberToBeSquared;
-        bool isResponseCorrect = (actualSquaredOutput == taskResponse.numberSquared);
+        bool isResponseCorrect = (taskResponse.batchTxHash != bytes32(0) && taskResponse.successCount > 0);
         // // if response was correct, no slashing happens so we return
         if (isResponseCorrect == true) {
             emit TaskChallengedUnsuccessfully(referenceTaskIndex, msg.sender);
