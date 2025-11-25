@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.12;
 
-import "../src/IncredibleSquaringServiceManager.sol" as incsqsm;
-import {IncredibleSquaringTaskManager} from "../src/IncredibleSquaringTaskManager.sol";
+import "../src/RebalanceServiceManager.sol" as incsqsm;
+import {RebalanceTaskManager} from "../src/RebalanceTaskManager.sol";
 import "@eigenlayer/contracts/permissions/PauserRegistry.sol";
 import "@eigenlayer/contracts/interfaces/IPauserRegistry.sol";
 import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
 import {TransparentUpgradeableProxy} from
     "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {
+    ISlashingRegistryCoordinator
+} from "@eigenlayer-middleware/src/interfaces/ISlashingRegistryCoordinator.sol";
 
-contract IncredibleSquaringTaskManagerTest is BLSMockAVSDeployer {
-    incsqsm.IncredibleSquaringServiceManager sm;
-    incsqsm.IncredibleSquaringServiceManager smImplementation;
-    IncredibleSquaringTaskManager tm;
-    IncredibleSquaringTaskManager tmImplementation;
+contract RebalanceTaskManagerTest is BLSMockAVSDeployer {
+    RebalanceTaskManager tm;
+    RebalanceTaskManager tmImplementation;
 
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
     address aggregator = address(uint160(uint256(keccak256(abi.encodePacked("aggregator")))));
@@ -26,14 +28,14 @@ contract IncredibleSquaringTaskManagerTest is BLSMockAVSDeployer {
         address[] memory _pausers = new address[](1);
         _pausers[0] = pauser;
         address pauserRegistry = address(new PauserRegistry(_pausers, unpauser));
-        tmImplementation = new IncredibleSquaringTaskManager(
-            incsqsm.ISlashingRegistryCoordinator(address(registryCoordinator)),
+        tmImplementation = new RebalanceTaskManager(
+            ISlashingRegistryCoordinator(address(registryCoordinator)),
             IPauserRegistry(pauserRegistry),
             TASK_RESPONSE_WINDOW_BLOCK
         );
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        tm = IncredibleSquaringTaskManager(
+        tm = RebalanceTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(tmImplementation),

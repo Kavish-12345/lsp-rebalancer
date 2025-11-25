@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "@eigenlayer/contracts/libraries/BytesLib.sol";
+import "@eigenlayer/test/utils/BytesLib.sol";
 import "./IRebalanceTaskManager.sol";
 import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
-import {
-    IAllocationManager,
-    IAllocationManagerTypes
-} from "@eigenlayer/contracts/interfaces/IAllocationManager.sol";
-// import {IAVSRegistrar} from "@eigenlayer/contracts/interfaces/IAVSRegistrar.sol";
-import {IRewardsCoordinator} from "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
+//import {
+  //  IAllocationManager,
+    //IAllocationManagerTypes
+//} from "@eigenlayer/contracts/interfaces/IAllocationManager.sol";
+import {IAVSRegistrar} from "@eigenlayer/contracts/interfaces/IAVSRegistrar.sol";
+//import {IRewardsCoordinator} from "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
 import {ISlashingRegistryCoordinator} from
     "@eigenlayer-middleware/src/interfaces/ISlashingRegistryCoordinator.sol";
 

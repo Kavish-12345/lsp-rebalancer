@@ -2,7 +2,7 @@
 pragma solidity ^0.8.12;
 
 import {Script} from "forge-std/Script.sol";
-import {IncredibleSquaringDeploymentLib} from "./utils/IncredibleSquaringDeploymentLib.sol";
+import {RebalanceDeploymentLib} from "./utils/RebalanceDeploymentLib.sol";
 import {CoreDeploymentLib} from "./utils/CoreDeploymentLib.sol";
 import {SetupPaymentsLib} from "./utils/SetupPaymentsLib.sol";
 import {IRewardsCoordinatorTypes} from "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
@@ -16,7 +16,7 @@ contract OperatorDirectedPayments is Script {
 
     address private deployer;
     CoreDeploymentLib.DeploymentData coreDeployment;
-    IncredibleSquaringDeploymentLib.DeploymentData incredibleSquaringDeployment;
+    RebalanceDeploymentLib.DeploymentData rebalanceDeployment;
     SetupPaymentsLib.OperatorConfig operatorRewardConfig;
     string internal constant filePath = "test/mockData/scratch/payment_info.json";
 
@@ -26,7 +26,7 @@ contract OperatorDirectedPayments is Script {
 
         coreDeployment =
             CoreDeploymentLib.readDeploymentJson("script/deployments/core/", block.chainid);
-        incredibleSquaringDeployment = IncredibleSquaringDeploymentLib.readDeploymentJson(
+        rebalanceDeployment = RebalanceDeploymentLib.readDeploymentJson(
             "script/deployments/incredible-squaring/", block.chainid
         );
         operatorRewardConfig = SetupPaymentsLib.readOperatorConfig("operator_reward_config");
@@ -55,8 +55,8 @@ contract OperatorDirectedPayments is Script {
         }
 
         SetupPaymentsLib.createOperatorDirectedAVSRewardsSubmissions(
-            incredibleSquaringDeployment.strategy,
-            incredibleSquaringDeployment.incredibleSquaringServiceManager,
+            rebalanceDeployment.strategy,
+            rebalanceDeployment.rebalanceServiceManager,
             operator_reward,
             num_payments,
             duration,

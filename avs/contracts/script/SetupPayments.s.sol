@@ -2,7 +2,7 @@
 pragma solidity ^0.8.12;
 
 import {Script} from "forge-std/Script.sol";
-import {IncredibleSquaringDeploymentLib} from "./utils/IncredibleSquaringDeploymentLib.sol";
+import {RebalanceDeploymentLib} from "./utils/RebalanceDeploymentLib.sol";
 import {CoreDeploymentLib} from "./utils/CoreDeploymentLib.sol";
 import {SetupPaymentsLib} from "./utils/SetupPaymentsLib.sol";
 import {
@@ -36,7 +36,7 @@ contract SetupPayments is Script {
 
     address private deployer;
     CoreDeploymentLib.DeploymentData coreDeployment;
-    IncredibleSquaringDeploymentLib.DeploymentData incredibleSquaringDeployment;
+    RebalanceDeploymentLib.DeploymentData rebalanceDeployment;
     string internal constant paymentfilepath = "test/mockData/scratch/payments.json";
     string internal constant filePath = "test/mockData/scratch/payment_info.json";
 
@@ -49,8 +49,8 @@ contract SetupPayments is Script {
 
         coreDeployment =
             CoreDeploymentLib.readDeploymentJson("script/deployments/core/", block.chainid);
-        incredibleSquaringDeployment = IncredibleSquaringDeploymentLib.readDeploymentJson(
-            "script/deployments/incredible-squaring/", block.chainid
+        rebalanceDeployment = RebalanceDeploymentLib.readDeploymentJson(
+            "script/deployments/rebalance/", block.chainid
         );
     }
 
@@ -108,7 +108,7 @@ contract SetupPayments is Script {
     ) public {
         SetupPaymentsLib.createAVSRewardsSubmissions(
             IRewardsCoordinator(coreDeployment.rewardsCoordinator),
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.strategy,
             numPayments,
             amountPerPayment,
             duration,
@@ -129,7 +129,7 @@ contract SetupPayments is Script {
             recipient,
             earnerLeaf,
             NUM_TOKEN_EARNINGS,
-            incredibleSquaringDeployment.strategy
+            rebalanceDeployment.strategy
         );
     }
 
@@ -143,7 +143,7 @@ contract SetupPayments is Script {
             IRewardsCoordinator(coreDeployment.rewardsCoordinator),
             NUM_TOKEN_EARNINGS,
             amountPerPayment,
-            incredibleSquaringDeployment.strategy
+            rebalanceDeployment.strategy
         );
         IRewardsCoordinator.EarnerTreeMerkleLeaf[] memory earnerLeaves =
             SetupPaymentsLib.createEarnerLeaves(earners, tokenLeaves);
@@ -151,7 +151,7 @@ contract SetupPayments is Script {
             IRewardsCoordinator(coreDeployment.rewardsCoordinator),
             tokenLeaves,
             earnerLeaves,
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.strategy,
             endTimestamp,
             numPayments,
             NUM_TOKEN_EARNINGS,

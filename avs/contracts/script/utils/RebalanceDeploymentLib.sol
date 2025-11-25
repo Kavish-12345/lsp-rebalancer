@@ -18,11 +18,11 @@ import {SlashingRegistryCoordinator} from
     "@eigenlayer-middleware/src/SlashingRegistryCoordinator.sol";
 import {IPermissionController} from "@eigenlayer/contracts/interfaces/IPermissionController.sol";
 import {
-    IncredibleSquaringServiceManager,
+    RebalanceServiceManager,
     IServiceManager,
-    IIncredibleSquaringTaskManager
-} from "../../src/IncredibleSquaringServiceManager.sol";
-import {IncredibleSquaringTaskManager} from "../../src/IncredibleSquaringTaskManager.sol";
+    IRebalanceTaskManager
+} from "../../src/RebalanceServiceManager.sol";
+import {RebalanceTaskManager} from "../../src/RebalanceTaskManager.sol";
 import {IDelegationManager} from "@eigenlayer/contracts/interfaces/IDelegationManager.sol";
 // import {Quorum} from "@eigenlayer-middleware/src/interfaces/IECDSAStakeRegistryEventsAndErrors.sol";
 import {UpgradeableProxyLib} from "./UpgradeableProxyLib.sol";
@@ -51,7 +51,7 @@ import {
 } from "@eigenlayer/contracts/permissions/PauserRegistry.sol";
 import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
-library IncredibleSquaringDeploymentLib {
+library RebalanceDeploymentLib {
     using stdJson for *;
     using Strings for *;
     using UpgradeableProxyLib for address;
@@ -60,8 +60,8 @@ library IncredibleSquaringDeploymentLib {
     string internal constant MIDDLEWARE_VERSION = "v1.4.0-testnet-holesky";
 
     struct DeploymentData {
-        address incredibleSquaringServiceManager;
-        address incredibleSquaringTaskManager;
+        address rebalanceServiceManager;
+        address rebalanceTaskManager;
         address slashingRegistryCoordinator;
         address operatorStateRetriever;
         address blsapkRegistry;
@@ -74,7 +74,7 @@ library IncredibleSquaringDeploymentLib {
         address slasher;
     }
 
-    struct IncredibleSquaringSetupConfig {
+    struct RebalanceSetupConfig {
         uint256 numQuorums;
         uint256[] operatorParams;
         address operator_addr;
@@ -92,7 +92,7 @@ library IncredibleSquaringDeploymentLib {
         address proxyAdmin,
         CoreDeploymentLib.DeploymentData memory core,
         address strategy,
-        IncredibleSquaringSetupConfig memory isConfig,
+        RebalanceSetupConfig memory isConfig,
         address admin
     ) internal returns (DeploymentData memory) {
         /// read EL deployment address
@@ -104,9 +104,9 @@ library IncredibleSquaringDeploymentLib {
 
         // First, deploy upgradeable proxy contracts that will point to the implementations.
         OperatorStateRetriever operatorStateRetriever = new OperatorStateRetriever();
-        result.incredibleSquaringServiceManager = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
+        result.rebalanceServiceManager = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
         result.stakeRegistry = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
-        result.incredibleSquaringTaskManager = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
+        result.rebalanceTaskManager = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
         result.slashingRegistryCoordinator = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
         result.blsapkRegistry = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
         result.indexRegistry = UpgradeableProxyLib.setUpEmptyProxy(proxyAdmin);
@@ -134,13 +134,13 @@ library IncredibleSquaringDeploymentLib {
             new InstantSlasher(
                 IAllocationManager(core.allocationManager),
                 ISlashingRegistryCoordinator(result.slashingRegistryCoordinator),
-                result.incredibleSquaringTaskManager
+                result.rebalanceTaskManager
             )
         );
         console2.log("pauser_registry");
         console2.log(coredata.pauserRegistry);
         console2.log("service_manager");
-        console2.log(result.incredibleSquaringServiceManager);
+        console2.log(result.rebalanceServiceManager);
         console2.log("stake_registry");
         console2.log(result.stakeRegistry);
         console2.log("bls_apk_registry");
@@ -208,7 +208,7 @@ library IncredibleSquaringDeploymentLib {
         look_ahead_period[0] = 0;
         bytes memory upgradeCall = abi.encodeCall(
             SlashingRegistryCoordinator.initialize,
-            (admin, admin, admin, 0, result.incredibleSquaringServiceManager)
+            (admin, admin, admin, 0, result.rebalanceServiceManager)
         );
 
         UpgradeableProxyLib.upgrade(result.stakeRegistry, stakeRegistryImpl);
@@ -219,44 +219,44 @@ library IncredibleSquaringDeploymentLib {
         );
         console2.log("allocation_manager");
         console2.log(core.allocationManager);
-        IncredibleSquaringServiceManager incredibleSquaringServiceManagerImpl = new IncredibleSquaringServiceManager(
+        RebalanceServiceManager rebalanceServiceManagerImpl = new RebalanceServiceManager(
             (IAVSDirectory(avsdirectory)),
             ISlashingRegistryCoordinator(result.slashingRegistryCoordinator),
             IStakeRegistry(result.stakeRegistry),
             core.rewardsCoordinator,
             IAllocationManager(core.allocationManager),
             IPermissionController(core.permissionController),
-            IIncredibleSquaringTaskManager(result.incredibleSquaringTaskManager)
+            IRebalanceTaskManager(result.rebalanceTaskManager)
         );
         console2.log("allocation_manager");
         console2.log(core.allocationManager);
-        IncredibleSquaringTaskManager incredibleSquaringTaskManagerImpl = new IncredibleSquaringTaskManager(
+        RebalanceTaskManager rebalanceTaskManagerImpl = new RebalanceTaskManager(
             ISlashingRegistryCoordinator(result.slashingRegistryCoordinator),
             IPauserRegistry(address(pausercontract)),
             30
         );
         bytes memory servicemanagerupgradecall =
-            abi.encodeCall(IncredibleSquaringServiceManager.initialize, (admin, admin));
+            abi.encodeCall(RebalanceServiceManager.initialize, (admin, admin));
         UpgradeableProxyLib.upgradeAndCall(
-            result.incredibleSquaringServiceManager,
-            address(incredibleSquaringServiceManagerImpl),
+            result.rebalanceServiceManager,
+            address(rebalanceServiceManagerImpl),
             servicemanagerupgradecall
         );
 
         bytes memory taskmanagerupgradecall = abi.encodeCall(
-            IncredibleSquaringTaskManager.initialize,
+            RebalanceTaskManager.initialize,
             (
                 admin,
                 isConfig.aggregator_addr,
                 isConfig.task_generator_addr,
                 core.allocationManager,
                 result.slasher,
-                result.incredibleSquaringServiceManager
+                result.rebalanceServiceManager
             )
         );
         UpgradeableProxyLib.upgradeAndCall(
-            result.incredibleSquaringTaskManager,
-            address(incredibleSquaringTaskManagerImpl),
+            result.rebalanceTaskManager,
+            address(rebalanceTaskManagerImpl),
             (taskmanagerupgradecall)
         );
 
@@ -275,17 +275,17 @@ library IncredibleSquaringDeploymentLib {
     function readDeploymentJson(
         uint256 chainId
     ) internal returns (DeploymentData memory) {
-        return readDeploymentJson("script/deployments/incredible-squaring/", chainId);
+        return readDeploymentJson("script/deployments/rebalance/", chainId);
     }
 
-    function readIncredibleSquaringConfigJson(
+    function readRebalanceConfigJson(
         string memory directoryPath
-    ) internal returns (IncredibleSquaringSetupConfig memory) {
+    ) internal returns (RebalanceSetupConfig memory) {
         string memory fileName = string.concat(directoryPath, ".json");
         require(vm.exists(fileName), "Deployment file does not exist");
         string memory json = vm.readFile(fileName);
 
-        IncredibleSquaringSetupConfig memory data;
+        RebalanceSetupConfig memory data;
         data.numQuorums = json.readUint(".num_quorums");
         data.operatorParams = json.readUintArray(".operator_params");
         data.aggregator_addr = json.readAddress(".aggregator_addr");
@@ -311,10 +311,10 @@ library IncredibleSquaringDeploymentLib {
         string memory json = vm.readFile(fileName);
 
         DeploymentData memory data;
-        data.incredibleSquaringServiceManager =
-            json.readAddress(".addresses.incredibleSquaringServiceManager");
-        data.incredibleSquaringTaskManager =
-            json.readAddress(".addresses.incredibleSquaringTaskManager");
+        data.rebalanceServiceManager =
+            json.readAddress(".addresses.rebalanceServiceManager");
+        data.rebalanceTaskManager =
+            json.readAddress(".addresses.rebalanceTaskManager");
         data.slashingRegistryCoordinator = json.readAddress(".addresses.registryCoordinator");
         data.operatorStateRetriever = json.readAddress(".addresses.operatorStateRetriever");
         data.stakeRegistry = json.readAddress(".addresses.stakeRegistry");
@@ -329,7 +329,7 @@ library IncredibleSquaringDeploymentLib {
     function writeDeploymentJson(
         DeploymentData memory data
     ) internal {
-        writeDeploymentJson("script/deployments/incredible-squaring/", block.chainid, data);
+        writeDeploymentJson("script/deployments/rebalance/", block.chainid, data);
     }
 
     function writeDeploymentJson(
@@ -338,8 +338,7 @@ library IncredibleSquaringDeploymentLib {
         DeploymentData memory data
     ) internal {
         address proxyAdmin =
-            address(UpgradeableProxyLib.getProxyAdmin(data.incredibleSquaringServiceManager));
-
+            address(UpgradeableProxyLib.getProxyAdmin(data.rebalanceServiceManager));
         string memory deploymentData = _generateDeploymentJson(data, proxyAdmin);
 
         string memory fileName = string.concat(outputPath, vm.toString(chainId), ".json");
@@ -373,12 +372,12 @@ library IncredibleSquaringDeploymentLib {
         return string.concat(
             '{"proxyAdmin":"',
             proxyAdmin.toHexString(),
-            '","incredibleSquaringServiceManager":"',
-            data.incredibleSquaringServiceManager.toHexString(),
-            '","incredibleSquaringServiceManagerImpl":"',
-            data.incredibleSquaringServiceManager.getImplementation().toHexString(),
-            '","incredibleSquaringTaskManager":"',
-            data.incredibleSquaringTaskManager.toHexString(),
+            '","rebalanceServiceManager":"',
+            data.rebalanceServiceManager.toHexString(),
+            '","rebalanceServiceManagerImpl":"',
+            data.rebalanceServiceManager.getImplementation().toHexString(),
+            '","rebalanceTaskManager":"',
+            data.rebalanceTaskManager.toHexString(),
             '","registryCoordinator":"',
             data.slashingRegistryCoordinator.toHexString(),
             '","blsapkRegistry":"',

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {MockERC20} from "src/MockERC20.sol";
-import {IncredibleSquaringDeploymentLib} from "./utils/IncredibleSquaringDeploymentLib.sol";
+import {RebalanceDeploymentLib} from "./utils/RebalanceDeploymentLib.sol";
 import {CoreDeploymentLib} from "./utils/CoreDeploymentLib.sol";
 import {SetupDistributionsLib} from "./utils/SetupDistributionsLib.sol";
 import {IRewardsCoordinator} from "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
@@ -27,8 +27,8 @@ contract SetupDistributions is Script, Test {
     CoreDeploymentLib.DeploymentData coreDeployment;
     CoreDeploymentLib.DeploymentConfigData coreConfig;
 
-    IncredibleSquaringDeploymentLib.DeploymentData incredibleSquaringDeployment;
-    IncredibleSquaringDeploymentLib.IncredibleSquaringSetupConfig incredibleSquaringConfig;
+    RebalanceDeploymentLib.DeploymentData rebalanceDeployment;
+    RebalanceDeploymentLib.RebalanceSetupConfig rebalanceConfig;
 
     RewardsCoordinator rewardsCoordinator;
     string internal constant paymentInfofilePath = "test/mockData/scratch/payment_info.json";
@@ -63,8 +63,8 @@ contract SetupDistributions is Script, Test {
 
         coreDeployment =
             CoreDeploymentLib.readDeploymentJson("script/deployments/core/", block.chainid);
-        incredibleSquaringDeployment = IncredibleSquaringDeploymentLib.readDeploymentJson(
-            "script/deployments/incredible-squaring/", block.chainid
+        rebalanceDeployment = RebalanceDeploymentLib.readDeploymentJson(
+            "script/deployments/rebalance/", block.chainid
         );
 
         rewardsCoordinator = RewardsCoordinator(coreDeployment.rewardsCoordinator);
@@ -132,7 +132,7 @@ contract SetupDistributions is Script, Test {
 
         vm.startBroadcast(deployer);
         earnerLeaves = _getEarnerLeaves(
-            _getEarners(deployer), amountPerPayment, incredibleSquaringDeployment.strategy
+            _getEarners(deployer), amountPerPayment, rebalanceDeployment.strategy
         );
         processClaim(
             filePath, indexToProve, recipient, earnerLeaves[indexToProve], amountPerPayment
@@ -145,16 +145,16 @@ contract SetupDistributions is Script, Test {
         uint256 amountPerPayment,
         uint32 startTimestamp
     ) public {
-        MockERC20(incredibleSquaringDeployment.token).mint(deployer, amountPerPayment * numPayments);
-        MockERC20(incredibleSquaringDeployment.token).increaseAllowance(
-            incredibleSquaringDeployment.incredibleSquaringServiceManager,
+        MockERC20(rebalanceDeployment.token).mint(deployer, amountPerPayment * numPayments);
+        MockERC20(rebalanceDeployment.token).increaseAllowance(
+            rebalanceDeployment.rebalanceServiceManager,
             amountPerPayment * numPayments
         );
         uint32 duration = rewardsCoordinator.MAX_REWARDS_DURATION();
 
         SetupDistributionsLib.createAVSRewardsSubmissions(
-            incredibleSquaringDeployment.incredibleSquaringServiceManager,
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.rebalanceServiceManager,
+            rebalanceDeployment.strategy,
             numPayments,
             amountPerPayment,
             duration,
@@ -168,9 +168,9 @@ contract SetupDistributions is Script, Test {
         uint32 startTimestamp,
         uint32 duration
     ) public {
-        MockERC20(incredibleSquaringDeployment.token).mint(deployer, amountPerPayment * numPayments);
-        MockERC20(incredibleSquaringDeployment.token).increaseAllowance(
-            incredibleSquaringDeployment.incredibleSquaringServiceManager,
+        MockERC20(rebalanceDeployment.token).mint(deployer, amountPerPayment * numPayments);
+        MockERC20(rebalanceDeployment.token).increaseAllowance(
+            rebalanceDeployment.rebalanceServiceManager,
             amountPerPayment * numPayments
         );
         address[] memory operators = new address[](2);
@@ -178,9 +178,9 @@ contract SetupDistributions is Script, Test {
         operators[1] = operator2;
 
         SetupDistributionsLib.createOperatorDirectedAVSRewardsSubmissions(
-            incredibleSquaringDeployment.incredibleSquaringServiceManager,
+            rebalanceDeployment.rebalanceServiceManager,
             operators,
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.strategy,
             numPayments,
             amountPerPayment,
             duration,
@@ -202,7 +202,7 @@ contract SetupDistributions is Script, Test {
             recipient,
             earnerLeaf,
             NUM_TOKEN_EARNINGS,
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.strategy,
             amountPerPayment
         );
     }
@@ -218,7 +218,7 @@ contract SetupDistributions is Script, Test {
             IRewardsCoordinator(coreDeployment.rewardsCoordinator),
             NUM_TOKEN_EARNINGS,
             amountPerPayment,
-            incredibleSquaringDeployment.strategy
+            rebalanceDeployment.strategy
         );
         IRewardsCoordinator.EarnerTreeMerkleLeaf[] memory earnerLeaves =
             SetupDistributionsLib.createEarnerLeaves(earners, tokenLeaves);
@@ -229,7 +229,7 @@ contract SetupDistributions is Script, Test {
             IRewardsCoordinator(coreDeployment.rewardsCoordinator),
             tokenLeaves,
             earnerLeaves,
-            incredibleSquaringDeployment.strategy,
+            rebalanceDeployment.strategy,
             endTimestamp,
             numPayments,
             NUM_TOKEN_EARNINGS,

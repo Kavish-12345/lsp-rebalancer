@@ -12,23 +12,22 @@ import {IStrategyManager, IStrategy} from "@eigenlayer/contracts/interfaces/IStr
 import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBaseTVLLimits.sol";
 import "@eigenlayer/test/mocks/EmptyContract.sol";
 
-import "@eigenlayer-middleware/src/RegistryCoordinator.sol" as regcoord;
-import {
-    IBLSApkRegistry,
-    IIndexRegistry,
-    IStakeRegistry
-} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import {RegistryCoordinator} from "@eigenlayer-middleware/src/RegistryCoordinator.sol";
+import {IBLSApkRegistry} from "@eigenlayer-middleware/src/interfaces/IBLSApkRegistry.sol";
+import {IIndexRegistry} from "@eigenlayer-middleware/src/interfaces/IIndexRegistry.sol";
+import {IStakeRegistry} from "@eigenlayer-middleware/src/interfaces/IStakeRegistry.sol";
 import {BLSApkRegistry} from "@eigenlayer-middleware/src/BLSApkRegistry.sol";
 import {IndexRegistry} from "@eigenlayer-middleware/src/IndexRegistry.sol";
 import {StakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
 import "@eigenlayer-middleware/src/OperatorStateRetriever.sol";
 
 import {
-    IncredibleSquaringServiceManager,
+    RebalanceServiceManager,
     IServiceManager
-} from "../src/IncredibleSquaringServiceManager.sol";
-import {IncredibleSquaringTaskManager} from "../src/IncredibleSquaringTaskManager.sol";
-import {IIncredibleSquaringTaskManager} from "../src/IIncredibleSquaringTaskManager.sol";
+} from "../src/RebalanceServiceManager.sol";
+import {RebalanceTaskManager} from "../src/RebalanceTaskManager.sol";
+import {IRebalanceTaskManager} from "../src/IRebalanceTaskManager.sol";
 import "../src/MockERC20.sol";
 
 import "forge-std/Test.sol";
@@ -38,14 +37,14 @@ import "forge-std/console.sol";
 import {StrategyFactory} from "@eigenlayer/contracts/strategies/StrategyFactory.sol";
 
 import {ContractsRegistry} from "../src/ContractsRegistry.sol";
-import {IncredibleSquaringDeploymentLib} from "../script/utils/IncredibleSquaringDeploymentLib.sol";
+import {RebalanceDeploymentLib} from "../script/utils/RebalanceDeploymentLib.sol";
 import {UpgradeableProxyLib} from "./utils/UpgradeableProxyLib.sol";
 
 import {FundOperator} from "./utils/FundOperator.sol";
 // # To deploy and verify our contract
-// forge script script/IncredibleSquaringDeployer.s.sol:IncredibleSquaringDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
+// forge script script/RebalanceDeployer.s.sol:RebalanceDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
 
-contract IncredibleSquaringDeployer is Script {
+contract RebalanceDeployer is Script {
     // DEPLOYMENT CONSTANTS
     uint256 public constant QUORUM_THRESHOLD_PERCENTAGE = 100;
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
@@ -61,11 +60,10 @@ contract IncredibleSquaringDeployer is Script {
 
     address public rewardscoordinator;
 
-    ProxyAdmin public incredibleSquaringProxyAdmin;
-    PauserRegistry public incredibleSquaringPauserReg;
-
-    regcoord.RegistryCoordinator public registryCoordinator;
-    regcoord.IRegistryCoordinator public registryCoordinatorImplementation;
+    ProxyAdmin public rebalanceProxyAdmin;
+    PauserRegistry public rebalancePauserReg;
+    //regcoord.RegistryCoordinator public registryCoordinator;
+    //regcoord.IRegistryCoordinator public registryCoordinatorImplementation;
 
     IBLSApkRegistry public blsApkRegistry;
     IBLSApkRegistry public blsApkRegistryImplementation;
@@ -78,16 +76,15 @@ contract IncredibleSquaringDeployer is Script {
 
     OperatorStateRetriever public operatorStateRetriever;
 
-    IncredibleSquaringServiceManager public incredibleSquaringServiceManager;
-    IServiceManager public incredibleSquaringServiceManagerImplementation;
-
-    IncredibleSquaringTaskManager public incredibleSquaringTaskManager;
-    IIncredibleSquaringTaskManager public incredibleSquaringTaskManagerImplementation;
+    RebalanceServiceManager public rebalanceServiceManager;
+    IServiceManager public rebalanceServiceManagerImplementation;
+    RebalanceTaskManager public rebalanceTaskManager;
+    IRebalanceTaskManager public rebalanceTaskManagerImplementation;
     CoreDeploymentLib.DeploymentData internal configData;
-    IStrategy incredibleSquaringStrategy;
+    IStrategy rebalanceStrategy;
     address private deployer;
     MockERC20 public erc20Mock;
-    IncredibleSquaringDeploymentLib.DeploymentData incredibleSquaringDeployment;
+    RebalanceDeploymentLib.DeploymentData rebalanceDeployment;
 
     using UpgradeableProxyLib for address;
 
@@ -101,9 +98,9 @@ contract IncredibleSquaringDeployer is Script {
     function run() external {
         // Eigenlayer contracts
         vm.startBroadcast(deployer);
-        IncredibleSquaringDeploymentLib.IncredibleSquaringSetupConfig memory isConfig =
-        IncredibleSquaringDeploymentLib.readIncredibleSquaringConfigJson(
-            "incredible_squaring_config"
+        RebalanceDeploymentLib.RebalanceSetupConfig memory isConfig =
+        RebalanceDeploymentLib.readRebalanceConfigJson(
+            "rebalance_config"
         );
         configData = CoreDeploymentLib.readDeploymentJson("script/deployments/core/", block.chainid);
 
@@ -114,23 +111,21 @@ contract IncredibleSquaringDeployer is Script {
         console.log(isConfig.operator_2_addr);
         (bool s,) = isConfig.operator_2_addr.call{value: 0.1 ether}("");
         require(s);
-        incredibleSquaringStrategy =
+        rebalanceStrategy =
             IStrategy(StrategyFactory(configData.strategyFactory).deployNewStrategy(erc20Mock));
         rewardscoordinator = configData.rewardsCoordinator;
 
         proxyAdmin = UpgradeableProxyLib.deployProxyAdmin();
-        require(address(incredibleSquaringStrategy) != address(0));
-        incredibleSquaringDeployment = IncredibleSquaringDeploymentLib.deployContracts(
-            proxyAdmin, configData, address(incredibleSquaringStrategy), isConfig, msg.sender
+        require(address(rebalanceStrategy) != address(0));
+        rebalanceDeployment = RebalanceDeploymentLib.deployContracts(
+            proxyAdmin, configData, address(rebalanceStrategy), isConfig, msg.sender
         );
-        console.log("instantSlasher", incredibleSquaringDeployment.slasher);
-
+        console.log("instantSlasher", rebalanceDeployment.slasher);
         FundOperator.fund_operator(
-            address(erc20Mock), incredibleSquaringDeployment.incredibleSquaringServiceManager, 1e18
+            address(erc20Mock), rebalanceDeployment.rebalanceServiceManager, 1e18
         );
-        incredibleSquaringDeployment.token = address(erc20Mock);
-
-        IncredibleSquaringDeploymentLib.writeDeploymentJson(incredibleSquaringDeployment);
+        rebalanceDeployment.token = address(erc20Mock);
+        RebalanceDeploymentLib.writeDeploymentJson(rebalanceDeployment);
 
         vm.stopBroadcast();
     }

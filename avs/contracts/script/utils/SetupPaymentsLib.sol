@@ -5,11 +5,11 @@ import {
     IRewardsCoordinator,
     IRewardsCoordinatorTypes
 } from "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
-import {IStrategy} from "eigenlayer-contracts/src/contracts/interfaces/IStrategyManager.sol";
+import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {console} from "forge-std/console.sol";
 import {stdJson} from "forge-std/StdJson.sol";
-import {IncredibleSquaringServiceManager} from "../../src/IncredibleSquaringServiceManager.sol";
+import {RebalanceServiceManager} from "../../src/RebalanceServiceManager.sol";
 
 library SetupPaymentsLib {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
@@ -105,7 +105,7 @@ library SetupPaymentsLib {
 
             operatorDirectedRewardsSubmissions[i] = rewardSubmission;
         }
-        IncredibleSquaringServiceManager(avs).createOperatorDirectedAVSRewardsSubmission(
+        RebalanceServiceManager(avs).createOperatorDirectedAVSRewardsSubmission(
             operatorDirectedRewardsSubmissions
         );
     }

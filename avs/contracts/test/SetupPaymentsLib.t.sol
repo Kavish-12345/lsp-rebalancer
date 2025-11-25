@@ -3,18 +3,24 @@ pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
 import "../script/utils/SetupPaymentsLib.sol";
-import "../script/utils/CoreDeploymentLib.sol";
-import "../script/utils/IncredibleSquaringDeploymentLib.sol";
+//import "../script/utils/CoreDeploymentLib.sol";
+//import "../script/utils/RebalanceDeploymentLib.sol";
 import "@eigenlayer/contracts/interfaces/IRewardsCoordinator.sol";
 import "@eigenlayer/contracts/interfaces/IStrategy.sol";
 import "@eigenlayer/contracts/libraries/Merkle.sol";
 import "../script/DeployEigenLayerCore.s.sol";
-import "../script/IncredibleSquaringDeployer.s.sol";
-import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
+//import "../script/RebalanceDeployer.s.sol";
+//import "@eigenlayer-middleware/src/ServiceManagerBase.sol";
 import {console2} from "forge-std/console2.sol";
 import {StrategyFactory} from "@eigenlayer/contracts/strategies/StrategyFactory.sol";
-import "@eigenlayer-middleware/src/interfaces/IECDSAStakeRegistry.sol";
+//import "@eigenlayer-middleware/src/interfaces/IECDSAStakeRegistry.sol";
 import {IERC20, StrategyFactory} from "@eigenlayer/contracts/strategies/StrategyFactory.sol";
+import {RebalanceDeploymentLib} from "../script/utils/RebalanceDeploymentLib.sol";
+import {CoreDeploymentLib} from "../script/utils/CoreDeploymentLib.sol";
+import {MockERC20} from "../src/MockERC20.sol";
+import {Vm} from "forge-std/Vm.sol";
+import {UpgradeableProxyLib} from "../script/utils/UpgradeableProxyLib.sol";
+
 
 contract TestConstants {
     uint256 constant NUM_PAYMENTS = 8;
@@ -31,7 +37,7 @@ contract SetupPaymentsLibTest is Test, TestConstants {
     using SetupPaymentsLib for *;
 
     Vm cheats = Vm(VM_ADDRESS);
-    IncredibleSquaringDeploymentLib.DeploymentData internal incredibleSquaringDeployment;
+    RebalanceDeploymentLib.DeploymentData internal rebalanceDeployment;
     CoreDeploymentLib.DeploymentData internal coreDeployment;
     CoreDeploymentLib.DeploymentConfigData coreConfigData;
     IRewardsCoordinator public rewardsCoordinator;
@@ -39,7 +45,7 @@ contract SetupPaymentsLibTest is Test, TestConstants {
     address proxyAdmin;
     address public deployer;
     MockERC20 public mockToken;
-    IncredibleSquaringDeploymentLib.IncredibleSquaringSetupConfig iSquaringConfig;
+    RebalanceDeploymentLib.RebalanceSetupConfig rebalanceConfig;
     mapping(address => IStrategy) public tokenToStrategy;
 
     string internal constant filePath = "test/mockData/scratch/payments.json";
@@ -210,7 +216,7 @@ contract SetupPaymentsLibTest is Test, TestConstants {
         uint32 duration = rewardsCoordinator.MAX_REWARDS_DURATION();
         uint32 startTimestamp = 10 days;
         cheats.warp(startTimestamp + 1);
-        mockToken.approve(address(rewardsCoordinator), amountPerPayment * numPayments);
+        //mockToken.approve(address(rewardsCoordinator), amountPerPayment * numPayments);
 
         SetupPaymentsLib.createAVSRewardsSubmissions(
             rewardsCoordinator,

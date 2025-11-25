@@ -15,17 +15,19 @@ import {OperatorStateRetriever} from "@eigenlayer-middleware/src/OperatorStateRe
 import {InstantSlasher} from "@eigenlayer-middleware/src/slashers/InstantSlasher.sol";
 import "@eigenlayer-middleware/src/libraries/BN254.sol";
 // import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
-import "./IRebalancingTaskManager.sol";
+import "./IRebalanceTaskManager.sol";
+import {IAllocationManager, IAllocationManagerTypes} from "@eigenlayer/contracts/interfaces/IAllocationManager.sol";
+import {IStrategy} from "@eigenlayer/contracts/interfaces/IStrategy.sol";
 import {IAllocationManagerTypes} from "@eigenlayer/contracts/interfaces/IAllocationManager.sol";
 import {OperatorSet} from "@eigenlayer/contracts/libraries/OperatorSetLib.sol";
 
-contract IncredibleSquaringTaskManager is
+contract RebalanceTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     OperatorStateRetriever,
-    IRebalancingTaskTaskManager
+    IRebalanceTaskManager
 {
     using BN254 for BN254.G1Point;
 
@@ -97,14 +99,14 @@ contract IncredibleSquaringTaskManager is
     /* FUNCTIONS */
     // NOTE: this function creates new task, assigns it a taskId
     function createNewTask(
-        address [] calldata lpAddresses,
-        uint256 lstRate,
+        address [] calldata lpaddresses,
+        uint256 lstrate,
         uint32 quorumThresholdPercentage,
         bytes calldata quorumNumbers
     ) external onlyTaskGenerator {
         Task memory newTask;
-        newTask.lpAddresses = lpAddresses;
-        newTask.lstRate = lstRate;
+        newTask.lpaddresses = lpaddresses;
+        newTask.lstrate = lstrate;
         newTask.quorumNumbers = quorumNumbers;
         newTask.quorumThresholdPercentage = quorumThresholdPercentage;
 
