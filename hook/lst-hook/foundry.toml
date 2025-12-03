@@ -7,7 +7,7 @@ libs = ["lib"]
 out = "out"
 solc_version = "0.8.30"
 src = "src"
-via_ir = false
+via_ir = false 
 
 [lint]
 exclude_lints = ["screaming-snake-case-immutable", "screaming-snake-case-const"]

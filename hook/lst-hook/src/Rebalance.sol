@@ -81,7 +81,7 @@ contract LSTrebalanceHook is BaseHook {
         public
         pure
         override
-        returns (Hooks.HookPermissions)
+        returns (Hooks.HookPermissions memory)
     {
         return
             Hooks.HookPermissions({
@@ -109,15 +109,14 @@ contract LSTrebalanceHook is BaseHook {
         int24,
         bytes calldata
     ) external override returns (bytes4) {
-        PoolId poolId = key.told();
-        rebalanceCount[poolId] = 0;
+        PoolId poolId = key.toId();
         lastStETHBalance[poolId] = _getLSTBalance(key);
         lastCheckTime[poolId] = block.timestamp;
         cumulativeYieldBps[poolId] = 0;
         return BaseHook.afterInitialize.selector;
     }
 
-    function afterAddLiqudity(
+    function afterAddLiquidity(
         address sender,
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
@@ -139,10 +138,10 @@ contract LSTrebalanceHook is BaseHook {
 
         _checkYield(key);
 
-        return (BaseHook.afterAddLiqudity.selector, BalanceDelta.wrap(0));
+        return (BaseHook.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
 
-    function afterRemoveLiqudity(
+    function afterRemoveLiquidity(
         address sender,
         PoolKey calldata key,
         IPoolManager.ModifyLiquidityParams calldata params,
@@ -162,7 +161,7 @@ contract LSTrebalanceHook is BaseHook {
             );
         }
         _checkYield(key);
-        return (BaseHook.afterRemoveLiqudity.selector, BalanceDelta.wrap(0));
+        return (BaseHook.afterRemoveLiquidity.selector, BalanceDelta.wrap(0));
     }
 
     function afterSwap(
@@ -171,20 +170,19 @@ contract LSTrebalanceHook is BaseHook {
         IPoolManager.SwapParams calldata,
         BalanceDelta,
         bytes calldata
-    ) external override returns (bytes4, BalanceDelta) {
+    ) external override returns (bytes4, int128) {
         _checkYield(key);
-        return (BaseHook.afterSwap.selector, BalanceDelta.wrap(0));
+        return (BaseHook.afterSwap.selector, 0);
     }
 
     //manual trigger by AVS operator
-    function manualRebalance(Poolkey calldata key) external {
+    function manualRebalance(PoolKey calldata key) external {
         if (msg.sender != avsOperator) {
             revert onlyAvsOperator();
         }
         _checkYield(key);
     }
 
-    //CORE LOGIC
     function _checkYield(PoolKey calldata key) internal {
         PoolId poolId = key.toId();
 
@@ -231,4 +229,214 @@ contract LSTrebalanceHook is BaseHook {
 
         lastCheckTime[poolId] = block.timestamp;
     }
+
+    function _getLSTBalance(
+        PoolKey calldata key
+    ) internal view returns (uint256) {
+        address token0 = Currency.unwrap(key.currency0);
+        address token1 = Currency.unwrap(key.currency1);
+        if (token0 == address(0) || token1 == address(0)) {
+            return 0;
+        }
+        uint256 balance0 = IERC20(token0).balanceOf(address(poolManager));
+        uint256 balance1 = IERC20(token1).balanceOf(address(poolManager));
+
+        return balance0 > balance1 ? balance0 : balance1;
+    }
+
+    function _registerPosition(
+        PoolId poolId,
+        address owner,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) internal {
+        if (tickLower >= tickUpper) revert InvalidTickRange();
+
+        uint256 idx = positionIndex[poolId][owner];
+        if (idx == 0 && positions[poolId].length > 0) {
+            positions[poolId].push(
+                LpPosition({
+                    owner: owner,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    liquidity: liquidity
+                })
+            );
+            positionIndex[poolId][owner] = positions[poolId].length - 1;
+        } else if (idx > 0) {
+            LpPosition storage pos = positions[poolId][idx - 1];
+            pos.liquidity += liquidity;
+            pos.tickLower = tickLower;
+            pos.tickUpper = tickUpper;
+        } else {
+            positions[poolId].push(
+                LpPosition({
+                    owner: owner,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    liquidity: liquidity
+                })
+            );
+            positionIndex[poolId][owner] = 1;
+        }
+        emit PositionRegistered(poolId, owner, tickLower, tickUpper, liquidity);
+    }
+
+    function _updatePosition(
+        PoolId poolId,
+        address owner,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity
+    ) internal {
+        uint256 idx = positionIndex[poolId][owner];
+
+        if (idx > 0) {
+            LpPosition storage pos = positions[poolId][idx - 1];
+
+            if (pos.liquidity <= liquidity) {
+                _removePosition(poolId, owner);
+            } else {
+                pos.liquidity -= liquidity;
+            }
+        }
+    }
+
+    function _removePosition(PoolId poolId, address owner) internal {
+        uint idx = positionIndex[poolId][owner];
+        if (idx > 0) {
+            uint lastIdx = positions[poolId].length - 1;
+            if (idx - 1 != lastIdx) {
+                positions[poolId][idx - 1] = positions[poolId][lastIdx];
+                positionIndex[poolId][positions[poolId][lastIdx].owner] = idx;
+            }
+
+            positions[poolId].pop();
+            delete positionIndex[poolId][owner];
+        }
+    }
+
+    // ============================================
+    // AVS OPERATOR FUNCTIONS
+    // ============================================
+
+    function executeRebalance(
+        PoolKey calldata key,
+        int24 tickShift
+    ) external returns (uint256 positionsRebalanced) {
+        if (msg.sender != avsOperator) {
+            revert onlyAvsOperator();
+        }
+
+        PoolId poolId = key.toId();
+        LpPosition[] storage posList = positions[poolId];
+        for (uint256 i = 0; i < posList.length; i++) {
+            LPPosition storage pos = posList[i];
+
+            if (pos.liquidity == 0) continue;
+
+            // Calculate new tick range (shifted up by yield amount)
+            int24 newTickLower = pos.tickLower + tickShift;
+            int24 newTickUpper = pos.tickUpper + tickShift;
+
+            // Edge case: Ensure ticks are within valid range
+            newTickLower = _boundTick(newTickLower);
+            newTickUpper = _boundTick(newTickUpper);
+
+            // Edge case: Ensure tick range is still valid
+            if (newTickLower >= newTickUpper) continue;
+
+            // Step 1: Remove liquidity from old position
+            try
+                poolManager.modifyLiquidity(
+                    key,
+                    IPoolManager.ModifyLiquidityParams({
+                        tickLower: pos.tickLower,
+                        tickUpper: pos.tickUpper,
+                        liquidityDelta: -int256(uint256(pos.liquidity)),
+                        salt: bytes32(0)
+                    }),
+                    ""
+                )
+            {
+                // Step 2: Add liquidity to new position (shifted up)
+                try
+                    poolManager.modifyLiquidity(
+                        key,
+                        IPoolManager.ModifyLiquidityParams({
+                            tickLower: newTickLower,
+                            tickUpper: newTickUpper,
+                            liquidityDelta: int256(uint256(pos.liquidity)),
+                            salt: bytes32(0)
+                        }),
+                        ""
+                    )
+                {
+                    // Update stored position
+                    pos.tickLower = newTickLower;
+                    pos.tickUpper = newTickUpper;
+                    positionsRebalanced++;
+                } catch {
+                    // Edge case: Re-add liquidity to old position if new position fails
+                    poolManager.modifyLiquidity(
+                        key,
+                        IPoolManager.ModifyLiquidityParams({
+                            tickLower: pos.tickLower,
+                            tickUpper: pos.tickUpper,
+                            liquidityDelta: int256(uint256(pos.liquidity)),
+                            salt: bytes32(0)
+                        }),
+                        ""
+                    );
+                }
+            } catch {
+                // Edge case: Failed to remove liquidity, skip this position
+                continue;
+            }
+        }
+        emit RebalanceExecuted(poolId, positionsRebalanced, tickShift);
+        return positionsRebalanced;
+    }
+
+    function _boundTick(int24 tick) internal pure returns (int24) {
+        int24 MIN_TICK = -887272;
+        int24 MAX_TICK = 887272;
+        if (tick < MIN_TICK) return MIN_TICK;
+        if (tick > MAX_TICK) return MAX_TICK;
+        return tick;
+    }
+
+    // ============================================
+    // VIEW FUNCTIONS
+    // ============================================
+    function getPositions(
+        PoolId poolId
+    ) external view returns (LpPosition[] memory) {
+        return positions[poolId];
+    }
+
+    function getPositionCount(
+        PoolId poolId
+    ) external view returns (uint256) {
+        return positions[poolId].length;
+    }
+
+     function getYieldInfo(PoolId poolId) external view returns (
+        uint256 lastBalance,
+        uint256 lastCheck,
+        uint256 cumulativeYield
+    ) {
+        return (
+            lastStETHBalance[poolId],
+            lastCheckTime[poolId],
+            cumulativeYieldBps[poolId]
+        );
+    }
+
 }
+interface IERC20 {
+    function balanceOf(address) external view returns (uint256);
+}
+
+
