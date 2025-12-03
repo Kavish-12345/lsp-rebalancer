@@ -1,7 +1,9 @@
+//SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.24;
 
-import {BaseHook} from "v4-periphery/src/base/hooks/BaseHook.sol";
+import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
+import {ModifyLiquidityParams} from "v4-core/src/types/PoolOperation.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
@@ -17,6 +19,7 @@ contract LSTrebalanceHook is BaseHook {
     using CurrencyLibrary for Currency;
     using StateLibrary for IPoolManager;
     using SafeCast for *;
+    address owner;
 
     struct LpPosition {
         address owner;
@@ -71,20 +74,20 @@ contract LSTrebalanceHook is BaseHook {
     error noPositionsToRebalance();
 
     constructor(
-        address _poolManager,
-        address _avsOperator
+        IPoolManager _poolManager
+        //address _avsOperator
     ) BaseHook(_poolManager) {
-        avsOperator = _avsOperator;
+        owner = msg.sender;
     }
 
     function getHookPermissions()
         public
         pure
         override
-        returns (Hooks.HookPermissions memory)
+        returns (Hooks.Permissions memory)
     {
         return
-            Hooks.HookPermissions({
+            Hooks.Permissions({
                 beforeInitialize: false,
                 afterInitialize: true,
                 beforeAddLiquidity: false,
@@ -108,7 +111,7 @@ contract LSTrebalanceHook is BaseHook {
         uint160,
         int24,
         bytes calldata
-    ) external override returns (bytes4) {
+    ) external returns (bytes4) {
         PoolId poolId = key.toId();
         lastStETHBalance[poolId] = _getLSTBalance(key);
         lastCheckTime[poolId] = block.timestamp;
@@ -116,13 +119,14 @@ contract LSTrebalanceHook is BaseHook {
         return BaseHook.afterInitialize.selector;
     }
 
-    function afterAddLiquidity(
+    function _afterAddLiquidity(
         address sender,
         PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
+        ModifyLiquidityParams calldata params,
+        BalanceDelta,
         BalanceDelta,
         bytes calldata
-    ) external override returns (bytes4, BalanceDelta) {
+    ) internal override returns (bytes4, BalanceDelta) {
         PoolId poolId = key.toId();
 
         //Register position
@@ -132,7 +136,7 @@ contract LSTrebalanceHook is BaseHook {
                 sender,
                 params.tickLower,
                 params.tickUpper,
-                uint128(params.liquidityDelta)
+                uint128((uint256)(params.liquidityDelta))
             );
         }
 
@@ -141,13 +145,14 @@ contract LSTrebalanceHook is BaseHook {
         return (BaseHook.afterAddLiquidity.selector, BalanceDelta.wrap(0));
     }
 
-    function afterRemoveLiquidity(
+    function _afterRemoveLiquidity(
         address sender,
         PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
+        ModifyLiquidityParams calldata params,
+        BalanceDelta,
         BalanceDelta,
         bytes calldata
-    ) external override returns (bytes4, BalanceDelta) {
+    ) internal override returns (bytes4, BalanceDelta) {
         PoolId poolId = key.toId();
 
         //Update position
@@ -157,20 +162,20 @@ contract LSTrebalanceHook is BaseHook {
                 sender,
                 params.tickLower,
                 params.tickUpper,
-                uint128(-params.liquidityDelta)
+                uint128(uint256(-params.liquidityDelta))
             );
         }
         _checkYield(key);
         return (BaseHook.afterRemoveLiquidity.selector, BalanceDelta.wrap(0));
     }
 
-    function afterSwap(
+    function _afterSwap(
         address,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata,
+        ModifyLiquidityParams calldata,
         BalanceDelta,
         bytes calldata
-    ) external override returns (bytes4, int128) {
+    ) external returns (bytes4, int128) {
         _checkYield(key);
         return (BaseHook.afterSwap.selector, 0);
     }
@@ -251,7 +256,7 @@ contract LSTrebalanceHook is BaseHook {
         int24 tickUpper,
         uint128 liquidity
     ) internal {
-        if (tickLower >= tickUpper) revert InvalidTickRange();
+        if (tickLower >= tickUpper) revert invalidTickShift();
 
         uint256 idx = positionIndex[poolId][owner];
         if (idx == 0 && positions[poolId].length > 0) {
@@ -332,7 +337,7 @@ contract LSTrebalanceHook is BaseHook {
         PoolId poolId = key.toId();
         LpPosition[] storage posList = positions[poolId];
         for (uint256 i = 0; i < posList.length; i++) {
-            LPPosition storage pos = posList[i];
+            LpPosition storage pos = posList[i];
 
             if (pos.liquidity == 0) continue;
 
@@ -351,7 +356,7 @@ contract LSTrebalanceHook is BaseHook {
             try
                 poolManager.modifyLiquidity(
                     key,
-                    IPoolManager.ModifyLiquidityParams({
+                    ModifyLiquidityParams({
                         tickLower: pos.tickLower,
                         tickUpper: pos.tickUpper,
                         liquidityDelta: -int256(uint256(pos.liquidity)),
@@ -364,7 +369,7 @@ contract LSTrebalanceHook is BaseHook {
                 try
                     poolManager.modifyLiquidity(
                         key,
-                        IPoolManager.ModifyLiquidityParams({
+                        ModifyLiquidityParams({
                             tickLower: newTickLower,
                             tickUpper: newTickUpper,
                             liquidityDelta: int256(uint256(pos.liquidity)),
@@ -381,7 +386,7 @@ contract LSTrebalanceHook is BaseHook {
                     // Edge case: Re-add liquidity to old position if new position fails
                     poolManager.modifyLiquidity(
                         key,
-                        IPoolManager.ModifyLiquidityParams({
+                        ModifyLiquidityParams({
                             tickLower: pos.tickLower,
                             tickUpper: pos.tickUpper,
                             liquidityDelta: int256(uint256(pos.liquidity)),
@@ -416,27 +421,28 @@ contract LSTrebalanceHook is BaseHook {
         return positions[poolId];
     }
 
-    function getPositionCount(
-        PoolId poolId
-    ) external view returns (uint256) {
+    function getPositionCount(PoolId poolId) external view returns (uint256) {
         return positions[poolId].length;
     }
 
-     function getYieldInfo(PoolId poolId) external view returns (
-        uint256 lastBalance,
-        uint256 lastCheck,
-        uint256 cumulativeYield
-    ) {
+    function getYieldInfo(
+        PoolId poolId
+    )
+        external
+        view
+        returns (
+            uint256 lastBalance,
+            uint256 lastCheck,
+            uint256 cumulativeYield
+        )
+    {
         return (
             lastStETHBalance[poolId],
             lastCheckTime[poolId],
             cumulativeYieldBps[poolId]
         );
     }
-
 }
 interface IERC20 {
     function balanceOf(address) external view returns (uint256);
 }
-
-

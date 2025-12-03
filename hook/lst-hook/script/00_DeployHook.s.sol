@@ -6,7 +6,7 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 
 import {BaseScript} from "./base/BaseScript.sol";
 
-import {Counter} from "../src/Counter.sol";
+import {LSTrebalanceHook} from "../src/Rebalance.sol";
 
 /// @notice Mines the address and deploys the Counter.sol Hook contract
 contract DeployHookScript is BaseScript {
@@ -20,13 +20,13 @@ contract DeployHookScript is BaseScript {
         // Mine a salt that will produce a hook address with the correct flags
         bytes memory constructorArgs = abi.encode(poolManager);
         (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(Counter).creationCode, constructorArgs);
+            HookMiner.find(CREATE2_FACTORY, flags, type(LSTrebalanceHook).creationCode, constructorArgs);
 
         // Deploy the hook using CREATE2
         vm.startBroadcast();
-        Counter counter = new Counter{salt: salt}(poolManager);
+        LSTrebalanceHook hook = new LSTrebalanceHook{salt: salt}(poolManager);
         vm.stopBroadcast();
 
-        require(address(counter) == hookAddress, "DeployHookScript: Hook Address Mismatch");
+        require(address(hook) == hookAddress, "DeployHookScript: Hook Address Mismatch");
     }
 }

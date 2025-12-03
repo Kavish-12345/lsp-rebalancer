@@ -9,6 +9,18 @@
     "rev": "33408fbc15e083eb0bc4205fa37cb6ba0a926f44"
   },
   "lib/uniswap-hooks": {
-    "rev": "e59fe72c110c3862eec9b332530dce49ca506bbb"
+    "tag": {
+      "name": "v1.2.1",
+      "rev": "acbd604c409a827f7f98c9517236da860c4fca1a"
+    }
+  },
+  "lib/v4-core": {
+    "tag": {
+      "name": "v4.0.0",
+      "rev": "e50237c43811bd9b526eff40f26772152a42daba"
+    }
+  },
+  "lib/v4-periphery": {
+    "rev": "3779387e5d296f39df543d23524b050f89a62917"
   }
 }
