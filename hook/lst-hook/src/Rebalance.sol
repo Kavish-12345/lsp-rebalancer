@@ -289,6 +289,7 @@ contract LSTrebalanceHook is BaseHook {
 
         emit PositionRegistered(poolId, owner, tickLower, tickUpper, liquidity);
     }
+    
     function _updatePosition(
         PoolId poolId,
         address owner,
