@@ -21,6 +21,7 @@ contract LSTrebalanceHook is BaseHook {
     using StateLibrary for IPoolManager;
     using SafeCast for *;
     address public hookOwner;
+    bool public demoMode;
 
     struct LpPosition {
         address owner;
@@ -190,12 +191,12 @@ contract LSTrebalanceHook is BaseHook {
     }
 
     //manual trigger by AVS operator
-   function manualRebalance(PoolKey calldata key) external {
-    if (msg.sender != avsServiceManager) {
-        revert onlyAvsOperator();
+    function manualRebalance(PoolKey calldata key) external {
+        if (msg.sender != avsServiceManager) {
+            revert onlyAvsOperator();
+        }
+        _checkYield(key);
     }
-    _checkYield(key);
-}
 
     function _checkYield(PoolKey calldata key) internal {
         PoolId poolId = key.toId();
@@ -327,6 +328,59 @@ contract LSTrebalanceHook is BaseHook {
 
         positions[poolId].pop();
         delete positionIndex[poolId][owner];
+    }
+    
+    // ============================================
+    // DEMO MODE FUNCTIONS
+    // ============================================
+
+    function setDemoMode(bool _enabled) external {
+        require(msg.sender == hookOwner, "not owner");
+        demoMode = _enabled;
+    }
+
+    function simulateYieldAccumulation(
+        PoolKey calldata key,
+        uint256 additionalYieldBps
+    ) external {
+        require(msg.sender == hookOwner, "not owner");
+        require(demoMode, "demo mode not enabled");
+
+        PoolId poolId = key.toId();
+        cumulativeYieldBps[poolId] += additionalYieldBps;
+
+        uint256 currentBalance = lastStETHBalance[poolId];
+        if (currentBalance == 0) currentBalance = 1000 ether;
+
+        uint256 yieldAmount = (currentBalance * additionalYieldBps) / 10000;
+        lastStETHBalance[poolId] = currentBalance + yieldAmount;
+
+        emit YieldDetected(
+            poolId,
+            yieldAmount,
+            additionalYieldBps,
+            cumulativeYieldBps[poolId]
+        );
+
+        if (additionalYieldBps >= MIN_YIELD_THRESHOLD) {
+            emit RebalanceRequested(
+                poolId,
+                yieldAmount,
+                additionalYieldBps,
+                cumulativeYieldBps[poolId],
+                positions[poolId].length,
+                currentBalance + yieldAmount,
+                block.timestamp
+            );
+        }
+
+        lastCheckTime[poolId] = block.timestamp;
+    }
+
+    function setInitialBalance(PoolKey calldata key, uint256 balance) external {
+        require(msg.sender == hookOwner, "not owner");
+        require(demoMode, "demo mode not enabled");
+        lastStETHBalance[key.toId()] = balance;
     }
 
     // ============================================
