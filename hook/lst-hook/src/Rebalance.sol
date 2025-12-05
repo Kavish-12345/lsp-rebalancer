@@ -35,8 +35,6 @@ contract LSTrebalanceHook is BaseHook {
     mapping(PoolId => LpPosition[]) public positions;
     mapping(PoolId => mapping(address => uint256)) public positionIndex;
 
-    address public avsOperator;
-
     uint256 public constant MIN_YIELD_THRESHOLD = 10;
     uint256 public constant CHECK_INTERVAL = 12 hours;
 
@@ -78,10 +76,14 @@ contract LSTrebalanceHook is BaseHook {
         hookOwner = msg.sender;
     }
 
-    function setAvsOperator(address _operator) external {
+    address public avsServiceManager; // This will be the AVS contract deployed by DevKit
+
+    function setAvsServiceManager(address _serviceManager) external {
         require(msg.sender == hookOwner, "not owner");
-        avsOperator = _operator;
+        require(_serviceManager != address(0), "zero address");
+        avsServiceManager = _serviceManager;
     }
+
     function getHookPermissions()
         public
         pure
@@ -188,12 +190,12 @@ contract LSTrebalanceHook is BaseHook {
     }
 
     //manual trigger by AVS operator
-    function manualRebalance(PoolKey calldata key) external {
-        if (msg.sender != avsOperator) {
-            revert onlyAvsOperator();
-        }
-        _checkYield(key);
+   function manualRebalance(PoolKey calldata key) external {
+    if (msg.sender != avsServiceManager) {
+        revert onlyAvsOperator();
     }
+    _checkYield(key);
+}
 
     function _checkYield(PoolKey calldata key) internal {
         PoolId poolId = key.toId();
@@ -289,7 +291,7 @@ contract LSTrebalanceHook is BaseHook {
 
         emit PositionRegistered(poolId, owner, tickLower, tickUpper, liquidity);
     }
-    
+
     function _updatePosition(
         PoolId poolId,
         address owner,
@@ -333,9 +335,10 @@ contract LSTrebalanceHook is BaseHook {
 
     function executeRebalance(
         PoolKey calldata key,
-        int24 tickShift
+        int24 tickShift,
+        uint32 taskId
     ) external returns (uint256 positionsRebalanced) {
-        if (msg.sender != avsOperator) {
+        if (msg.sender != avsServiceManager) {
             revert onlyAvsOperator();
         }
 

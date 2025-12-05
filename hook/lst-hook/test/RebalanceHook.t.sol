@@ -26,7 +26,7 @@ contract RebalanceHookTest is LSTTestBase {
     function testHookDeployment() public view {
         assertEq(address(hook.poolManager()), address(manager));
         assertEq(hook.hookOwner(), address(this));
-        assertEq(hook.avsOperator(), avsOperator);
+        assertEq(hook.avsServiceManager(), avsServiceManager);
     }
 
     function testPoolInitialization() public view {
@@ -106,7 +106,7 @@ contract RebalanceHookTest is LSTTestBase {
 
         vm.prank(address(0xBEEF));
         vm.expectRevert(LSTrebalanceHook.onlyAvsOperator.selector);
-        hook.executeRebalance(poolKey, 10);
+        hook.executeRebalance(poolKey, 10,1);
     }
 
     function testBasicRebalanceExecution() public {
@@ -122,8 +122,8 @@ contract RebalanceHookTest is LSTTestBase {
         simulateYield(100e18);
         triggerYieldCheck();
 
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 10,1);
 
         assertGe(rebalanced, 0, "Rebalance should not revert");
     }
@@ -134,15 +134,14 @@ contract RebalanceHookTest is LSTTestBase {
         // Random address tries
         vm.prank(address(0xBEEF));
         vm.expectRevert(LSTrebalanceHook.onlyAvsOperator.selector);
-        hook.executeRebalance(poolKey, 10);
+        hook.executeRebalance(poolKey, 10,1);
 
         // Owner tries (not operator)
         vm.expectRevert(LSTrebalanceHook.onlyAvsOperator.selector);
-        hook.executeRebalance(poolKey, 10);
-
+        hook.executeRebalance(poolKey, 10,1);
         // Only operator succeeds
-        vm.prank(avsOperator);
-        hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        hook.executeRebalance(poolKey, 10,1);
     }
 
     function testOnlyOperatorCanManualRebalance() public {
@@ -153,7 +152,7 @@ contract RebalanceHookTest is LSTTestBase {
         hook.manualRebalance(poolKey);
 
         // Operator succeeds
-        vm.prank(avsOperator);
+        vm.prank(avsServiceManager);
         vm.warp(block.timestamp + 12 hours + 1);
         hook.manualRebalance(poolKey);
     }
@@ -390,16 +389,16 @@ contract RebalanceHookTest is LSTTestBase {
 
     function testRebalanceWithNoPositions() public {
         // No liquidity added
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 10,1);
         assertEq(rebalanced, 0, "Should rebalance 0 positions");
     }
 
     function testRebalanceWithZeroTickShift() public {
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 0);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 0,1);
 
         // Should still succeed but do nothing
         assertEq(rebalanced, 0, "Should not rebalance with 0 shift");
@@ -408,8 +407,8 @@ contract RebalanceHookTest is LSTTestBase {
     function testRebalanceWithNegativeTickShift() public {
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, -10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, -10,1);
 
         // Should handle negative shift
         assertGe(rebalanced, 0, "Should handle negative shift");
@@ -419,8 +418,8 @@ contract RebalanceHookTest is LSTTestBase {
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
         // Very large shift that would exceed MAX_TICK
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 1000000);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 1000000,1);
 
         // Should bound ticks and handle gracefully
         assertGe(rebalanced, 0, "Should handle large shift");
@@ -430,8 +429,8 @@ contract RebalanceHookTest is LSTTestBase {
         // Position near max tick
         addLiquidity(lpUser1, 887160, 887220, 1000e18); // ✅ Aligned to tick spacing 60
 
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 100);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 100,1);
 
         // Should skip position if it would exceed MAX_TICK
         LSTrebalanceHook.LpPosition[] memory positions = hook.getPositions(
@@ -450,8 +449,8 @@ contract RebalanceHookTest is LSTTestBase {
         addLiquidity(lpUser1, -60, 60, 1000e18);
         addLiquidity(lpUser2, -120, 120, 2000e18);
 
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 10,1);
 
         // May rebalance 0, 1, or 2 depending on pool state
         assertLe(rebalanced, 2, "Should rebalance at most 2 positions");
@@ -462,8 +461,8 @@ contract RebalanceHookTest is LSTTestBase {
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
         // Rebalance first pool
-        vm.prank(avsOperator);
-        hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        hook.executeRebalance(poolKey, 10,1);
 
         // Check that rebalance only affected this pool
         uint256 count = hook.getPositionCount(poolId);
@@ -496,8 +495,8 @@ contract RebalanceHookTest is LSTTestBase {
         assertGt(yield, 0, "Yield should be detected");
 
         // 5. Execute rebalance
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 10,1);
         emit log_named_uint("Positions rebalanced", rebalanced);
 
         // 6. Remove liquidity
@@ -553,8 +552,8 @@ contract RebalanceHookTest is LSTTestBase {
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
         // Try to rebalance without yield
-        vm.prank(avsOperator);
-        uint256 rebalanced = hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        uint256 rebalanced = hook.executeRebalance(poolKey, 10,1);
 
         // Should complete but might rebalance 0 positions
         assertGe(rebalanced, 0, "Should not revert");
@@ -565,8 +564,8 @@ contract RebalanceHookTest is LSTTestBase {
         // Our hook should not introduce new reentrancy vectors
         addLiquidity(lpUser1, -60, 60, 1000e18);
 
-        vm.prank(avsOperator);
-        hook.executeRebalance(poolKey, 10);
+        vm.prank(avsServiceManager);
+        hook.executeRebalance(poolKey, 10,1);
 
         // No reverts = no reentrancy issues
         assertTrue(true, "No reentrancy issues");

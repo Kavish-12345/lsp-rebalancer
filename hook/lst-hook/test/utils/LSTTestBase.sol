@@ -39,7 +39,7 @@ abstract contract LSTTestBase is Test, Deployers {
     MockERC20 token1;
 
     address hookOwner = address(this);
-    address avsOperator = address(0x1234);
+   address avsServiceManager = address(0x1234);
     address lpUser1 = address(0x5678);
     address lpUser2 = address(0x9ABC);
 
@@ -79,7 +79,7 @@ abstract contract LSTTestBase is Test, Deployers {
         require(address(hook) == hookAddress, "Hook address mismatch");
 
         // Set AVS operator
-        hook.setAvsOperator(avsOperator);
+        hook.setAvsServiceManager(avsServiceManager);
 
         // Initialize pool
         poolKey = PoolKey({
