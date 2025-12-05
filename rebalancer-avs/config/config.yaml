@@ -1,0 +1,11 @@
+version: 0.0.3
+config:
+    project:
+        name: rebalancer-avs
+        version: 0.1.0
+        context: devnet
+        project_uuid: 29426c92-c121-4aa3-a2de-40e8a522963d
+        telemetry_enabled: true
+        templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
+        templateVersion: v0.1.0
+        templatelanguage: go
