@@ -1,8 +1,8 @@
 {
   "addresses": {
-    "avsTaskHook": ""
+    "avsTaskHook": "0x56186c1e64ca8043DEF78d06Aff222212ea5df71"
   },
   "chainInfo": {
-    "chainId": 0
+    "chainId": 31338
   }
 }

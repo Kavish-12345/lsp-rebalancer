@@ -1,8 +1,8 @@
 {
   "addresses": {
-    "": ""
+    "HelloWorldL2": "0x056e4a859558a3975761abD7385506BC4D8a8E60"
   },
   "chainInfo": {
-    "chainId": 0
+    "chainId": 31338
   }
 }

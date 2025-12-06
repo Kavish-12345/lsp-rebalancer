@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/Layr-Labs/hourglass-avs-template/contracts/bindings/l1/helloworldl1"
-	"github.com/Layr-Labs/hourglass-avs-template/contracts/bindings/l1/taskavsregistrar"
+	// Comment out unused imports
+	// "github.com/Layr-Labs/hourglass-avs-template/contracts/bindings/l1/helloworldl1"
+	// "github.com/Layr-Labs/hourglass-avs-template/contracts/bindings/l1/taskavsregistrar"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/performer/contracts"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/performer/server"
 	performerV1 "github.com/Layr-Labs/protocol-apis/gen/protos/eigenlayer/hourglass/v1/performer"
@@ -21,6 +22,15 @@ import (
 // to Executors configured to run the AVS Performer. Performers execute the work and
 // return the result to the Executor where the result is signed and return to the
 // Aggregator to place in the outbox once the signing threshold is met.
+
+// LST Rebalance Task Data Structure
+type RebalanceTaskData struct {
+	PoolId          [32]byte
+	YieldBps        uint64
+	CumulativeYield uint64
+	PositionCount   uint64
+	Timestamp       uint64
+}
 
 type TaskWorker struct {
 	logger        *zap.Logger
@@ -62,73 +72,91 @@ func NewTaskWorker(logger *zap.Logger) *TaskWorker {
 }
 
 func (tw *TaskWorker) ValidateTask(t *performerV1.TaskRequest) error {
-	tw.logger.Sugar().Infow("Validating task",
-		zap.Any("task", t),
+	tw.logger.Sugar().Infow("🔍 Validating LST rebalance task",
+		zap.String("taskId", string(t.TaskId)),  // FIXED: Convert []byte to string
 	)
 
-	// ------------------------------------------------------------------------
-	// Implement your AVS task validation logic here
-	// ------------------------------------------------------------------------
-	// This is where the Perfomer will validate the task request data.
-	// E.g. the Perfomer may validate that the request params are well-formed and adhere to a schema.
+	// Basic validation - check if task ID exists
+	if len(t.TaskId) == 0 {  // FIXED: Check length instead of comparing to ""
+		return fmt.Errorf("no task ID provided")
+	}
 
+	tw.logger.Sugar().Infow("✅ Task validation passed",
+		zap.String("taskId", string(t.TaskId)),  // FIXED: Convert []byte to string
+	)
 	return nil
 }
 
 func (tw *TaskWorker) HandleTask(t *performerV1.TaskRequest) (*performerV1.TaskResponse, error) {
-	tw.logger.Sugar().Infow("Handling task",
-		zap.Any("task", t),
+	tw.logger.Sugar().Infow("🔄 Processing LST rebalance task",
+		zap.String("taskId", string(t.TaskId)),  // FIXED: Convert []byte to string
 	)
 
-	// ------------------------------------------------------------------------
-	// Example: How to interact with contracts
-	// ------------------------------------------------------------------------
+	// TODO: In production, decode actual task data from the TaskMailbox
+	// For MVP/Demo: Use mock yield data
+	mockYieldBps := uint64(15) // 0.15% yield (15 basis points)
 
-	// Example 1: Generate bindings to contracts
-	if tw.contractStore != nil {
+	tw.logger.Sugar().Infow("📊 Task parameters",
+		"yieldBps", mockYieldBps,
+	)
 
-		taskRegistrarAddr, err := tw.contractStore.GetTaskAVSRegistrar()
-		if err != nil {
-			tw.logger.Warn("TaskAVSRegistrar not found", zap.Error(err))
-		} else {
-			tw.logger.Info("TaskAVSRegistrar", zap.String("address", taskRegistrarAddr.Hex()))
+	// Calculate optimal tick shift using your algorithm
+	tickShift := tw.calculateTickShift(mockYieldBps)
 
-			// TaskAVSRegistrar contract binding
-			if tw.l1Client != nil {
-				registrar, err := taskavsregistrar.NewTaskAVSRegistrar(taskRegistrarAddr, tw.l1Client)
-				if err == nil {
-					// Call the registrar contract
-					_ = registrar
-				}
-			}
-		}
+	tw.logger.Sugar().Infow("✅ Calculated tick shift",
+		"tickShift", tickShift,
+		"yieldBps", mockYieldBps,
+	)
 
-		// Example 2: Get custom contract addresses
-		if helloWorldL1, err := tw.contractStore.GetContract("HELLO_WORLD_L1"); err == nil {
-			tw.logger.Info("HelloWorldL1 contract", zap.String("address", helloWorldL1.Hex()))
+	// Encode tick shift as bytes for the response
+	resultBytes := []byte(fmt.Sprintf("%d", tickShift))
 
-			// Use the address to create a contract binding
-			contract, err := helloworldl1.NewHelloWorldL1(helloWorldL1, tw.l1Client)
-			if err == nil {
-				message, _ := contract.GetMessage(nil)
-				tw.logger.Info("Contract message", zap.String("message", message))
-			}
-		}
-
-		// Example 3: List available contracts
-		tw.logger.Info("Available contracts", zap.Strings("contracts", tw.contractStore.ListContracts()))
-	}
-
-	// ------------------------------------------------------------------------
-	// Implement your AVS logic here
-	// ------------------------------------------------------------------------
-	// This is where the Performer will do the work and provide compute.
-	// E.g. the Perfomer could call an external API, a local service or a script.
-	var resultBytes []byte
 	return &performerV1.TaskResponse{
 		TaskId: t.TaskId,
 		Result: resultBytes,
 	}, nil
+}
+
+// calculateTickShift - Core algorithm to determine how many ticks to shift LP positions
+func (tw *TaskWorker) calculateTickShift(yieldBps uint64) int32 {
+
+	// STRATEGY: Simple 1:1 mapping (1 basis point = 1 tick)
+	// This is close to mathematically correct for small yield values
+	// and provides deterministic consensus across all operators
+	tickShift := int32(yieldBps)
+
+	tw.logger.Sugar().Infow("📐 Calculating tick shift",
+		"yieldBps", yieldBps,
+		"calculatedShift", tickShift,
+	)
+
+	// ALTERNATIVE STRATEGY (for production):
+	// Price-based calculation using Uniswap v3 tick math
+	// yieldMultiplier := 1.0 + (float64(yieldBps) / 10000.0)
+	// priceShift := math.Log(yieldMultiplier) / math.Log(1.0001)
+	// tickShift := int32(math.Round(priceShift))
+
+	// Safety bounds: Prevent extreme shifts
+	// Uniswap v3 max tick range is ±887,272
+	if tickShift > 1000 {
+		tw.logger.Sugar().Warnw("Tick shift capped at maximum",
+			"original", tickShift,
+			"capped", 1000,
+		)
+		tickShift = 1000
+	} else if tickShift < -1000 {
+		tw.logger.Sugar().Warnw("Tick shift capped at minimum",
+			"original", tickShift,
+			"capped", -1000,
+		)
+		tickShift = -1000
+	}
+
+	tw.logger.Sugar().Infow("📈 Final tick shift",
+		"finalShift", tickShift,
+	)
+
+	return tickShift
 }
 
 func main() {

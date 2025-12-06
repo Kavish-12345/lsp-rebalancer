@@ -24,7 +24,11 @@ context:
     schedule: "0 */2 * * *"
     private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
     bls_private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
-    active_stake_roots: []
+    active_stake_roots:
+      - chain_id: 31337
+        stake_root: 0xa1c1009bedc30a5a975b51ef306e4c036e98757ad20f7315edd50b8aff2ef2b1
+      - chain_id: 31338
+        stake_root: 0xa1c1009bedc30a5a975b51ef306e4c036e98757ad20f7315edd50b8aff2ef2b1
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
   # ECDSA keys used are from Anvil's private key set
   # BLS keystores are deterministically pre-generated and embedded. These are NOT derived from a secure seed
@@ -93,7 +97,7 @@ context:
           name: "stETH_Strategy"
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
-            - operator_set: "0" 
+            - operator_set: "0"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
             - operator_set: "1"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
@@ -168,17 +172,49 @@ context:
       ecdsa_certificate_verifier: "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F"
       task_mailbox: "0xB99CC53e8db7018f557606C2a5B066527bF96b26"
   # L1 Contracts deployed on `devnet start`
-  deployed_l1_contracts: []
+  deployed_l1_contracts:
+    - abi: .devkit/contracts/out/ProxyAdmin.sol/ProxyAdmin.json
+      address: 0x152Fc95cdC8FbE85998a3B5985F097a3093100DE
+      name: l1ProxyAdmin
+    - abi: .devkit/contracts/out/TaskAVSRegistrar.sol/TaskAVSRegistrar.json
+      address: 0x3EC7D050c71BaA842335c95DcD540f12543cA867
+      name: taskAVSRegistrar
+    - abi: .devkit/contracts/out/TaskAVSRegistrar.sol/TaskAVSRegistrar.json
+      address: 0xF9EC1403FAe9C544B99B19c383f843e467535499
+      name: taskAVSRegistrarImpl
+    - abi: .devkit/contracts/out/HelloWorldL1.sol/HelloWorldL1.json
+      address: 0xe435Cb23b26B37F6ACab76eb8c53379ceA73BF1d
+      name: HelloWorldL1
   # L2 Contracts deployed on `devnet start`
-  deployed_l2_contracts: []
+  deployed_l2_contracts:
+    - abi: .devkit/contracts/out/AVSTaskHook.sol/AVSTaskHook.json
+      address: 0x56186c1e64ca8043DEF78d06Aff222212ea5df71
+      name: avsTaskHook
+    - abi: .devkit/contracts/out/HelloWorldL2.sol/HelloWorldL2.json
+      address: 0x056e4a859558a3975761abD7385506BC4D8a8E60
+      name: HelloWorldL2
   # Operator Sets registered on `devnet start`
-  operator_sets: []
+  operator_sets:
+    - curve_type: ECDSA
+      operator_set_id: 0
+      strategies:
+        - strategy: 0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574
+    - curve_type: ECDSA
+      operator_set_id: 1
+      strategies:
+        - strategy: 0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574
   # Operators registered on `devnet start`
-  operator_registrations: []
+  operator_registrations:
+    - address: 0x90F79bf6EB2c4f870365E785982E1f101E93b906
+      operator_set_id: 0
+      payload: 0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000f61676772656761746f723a393030300000000000000000000000000000000000
+    - address: 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65
+      operator_set_id: 1
+      payload: 0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d6578656375746f723a3930393000000000000000000000000000000000000000
   # Release artifact
   artifact:
-    artifactId: ""
-    component: ""
+    artifactId: sha256:147b01fccd0afedd81cdec701cc74cd476f8fccf4e652ac490dee5031f323a41
+    component: rebalancer-avs-performer
     digest: ""
     registry: ""
     version: ""
