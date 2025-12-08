@@ -12,3 +12,9 @@ via_ir = false
 [lint]
 exclude_lints = ["screaming-snake-case-immutable", "screaming-snake-case-const"]
 lint_on_build = false
+
+[rpc_endpoints]
+local = "http://localhost:9545"
+
+[etherscan]
+localhost = { key = "none" }

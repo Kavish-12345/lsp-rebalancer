@@ -20,8 +20,8 @@ contract LSTrebalanceHook is BaseHook {
     using CurrencyLibrary for Currency;
     using StateLibrary for IPoolManager;
     using SafeCast for *;
-    address public hookOwner;
     bool public demoMode;
+    address hookOwner;
 
     struct LpPosition {
         address owner;
@@ -67,20 +67,22 @@ contract LSTrebalanceHook is BaseHook {
         int24 tickUpper,
         uint128 liquidity
     );
-
+    event DebugAfterInit(string message);
+    
     error onlyAvsOperator();
     error invalidTickShift();
     error insufficientYield();
     error noPositionsToRebalance();
 
-    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
-        hookOwner = msg.sender;
-    }
+    // In src/Rebalance.sol
 
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
+      hookOwner = msg.sender;  // Remove this line completely
+}
     address public avsServiceManager; // This will be the AVS contract deployed by DevKit
 
     function setAvsServiceManager(address _serviceManager) external {
-        require(msg.sender == hookOwner, "not owner");
+       
         require(_serviceManager != address(0), "zero address");
         avsServiceManager = _serviceManager;
     }
@@ -116,6 +118,7 @@ contract LSTrebalanceHook is BaseHook {
         uint160,
         int24
     ) internal override returns (bytes4) {
+        emit DebugAfterInit("afterInitialize called");
         PoolId poolId = key.toId();
         lastStETHBalance[poolId] = 0;
         lastCheckTime[poolId] = block.timestamp;
@@ -329,21 +332,26 @@ contract LSTrebalanceHook is BaseHook {
         positions[poolId].pop();
         delete positionIndex[poolId][owner];
     }
-    
+
     // ============================================
     // DEMO MODE FUNCTIONS
     // ============================================
 
     function setDemoMode(bool _enabled) external {
-        require(msg.sender == hookOwner, "not owner");
+       
         demoMode = _enabled;
     }
+
+    // Add after setDemoMode() function
+
+    
+    
 
     function simulateYieldAccumulation(
         PoolKey calldata key,
         uint256 additionalYieldBps
     ) external {
-        require(msg.sender == hookOwner, "not owner");
+       
         require(demoMode, "demo mode not enabled");
 
         PoolId poolId = key.toId();
@@ -378,7 +386,7 @@ contract LSTrebalanceHook is BaseHook {
     }
 
     function setInitialBalance(PoolKey calldata key, uint256 balance) external {
-        require(msg.sender == hookOwner, "not owner");
+        
         require(demoMode, "demo mode not enabled");
         lastStETHBalance[key.toId()] = balance;
     }

@@ -3,10 +3,9 @@ pragma solidity ^0.8.26;
 
 import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
-
 import {console2} from "forge-std/Script.sol";
 import {BaseScript} from "../base/BaseScript.sol";
-
+/// @notice Deploy Uniswap V4 artifacts to local Anvil network
 contract DeployLocalV4 is BaseScript {
     function run() public {
         require(block.chainid == 31337, "Local deployment only");

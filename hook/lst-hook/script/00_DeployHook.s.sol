@@ -10,25 +10,26 @@ import {LSTrebalanceHook} from "../src/Rebalance.sol";
 
 /// @notice Mines the address and deploys the Counter.sol Hook contract
 contract DeployHookScript is BaseScript {
-    function run() public {
-        // hook contracts must have specific flags encoded in the address
-        uint160 flags = uint160(
-    Hooks.AFTER_INITIALIZE_FLAG | 
-    Hooks.AFTER_ADD_LIQUIDITY_FLAG | 
-    Hooks.AFTER_REMOVE_LIQUIDITY_FLAG | 
-    Hooks.AFTER_SWAP_FLAG
-);
-        // Mine a salt that will produce a hook address with the correct flags
-        bytes memory constructorArgs = abi.encode(poolManager);
+   // In script/00_DeployHook.s.sol
 
-        (address hookAddress, bytes32 salt) =
-            HookMiner.find(CREATE2_FACTORY, flags, type(LSTrebalanceHook).creationCode, constructorArgs);
+function run() public {
+    uint160 flags = uint160(
+        Hooks.AFTER_INITIALIZE_FLAG | 
+        Hooks.AFTER_ADD_LIQUIDITY_FLAG | 
+        Hooks.AFTER_REMOVE_LIQUIDITY_FLAG | 
+        Hooks.AFTER_SWAP_FLAG
+    );
+    
+    // Include owner in constructor args
+    bytes memory constructorArgs = abi.encode(poolManager);
 
-        // Deploy the hook using CREATE2
-        vm.startBroadcast();
-        LSTrebalanceHook hook = new LSTrebalanceHook{salt: salt}(poolManager);
-        vm.stopBroadcast();
+    (address hookAddress, bytes32 salt) =
+        HookMiner.find(CREATE2_FACTORY, flags, type(LSTrebalanceHook).creationCode, constructorArgs);
 
-        require(address(hook) == hookAddress, "DeployHookScript: Hook Address Mismatch");
-    }
+    vm.startBroadcast();
+    LSTrebalanceHook hook = new LSTrebalanceHook{salt: salt}(poolManager);
+    vm.stopBroadcast();
+
+    require(address(hook) == hookAddress, "DeployHookScript: Hook Address Mismatch");
+}
 }
