@@ -27,7 +27,6 @@ An autonomous system that:
 
 ![System Architecture](assets/architecture.png)
 
-```
 
 ## Key Features
 
