@@ -21,7 +21,7 @@ An autonomous system that:
 3. Executes rebalancing transactions automatically
 4. Secured by EigenLayer's restaking infrastructure
 
-**Response Time:** ~25ms from yield detection to on-chain execution
+**Response Time:** ~45ms from task receipt to on-chain execution
 
 ## System Architecture
 
@@ -31,17 +31,17 @@ An autonomous system that:
 ## Key Features
 
 ### Smart Contract Hook
-- Yield Tracking: Monitors LST balance changes after every swap
-- Position Registry: Tracks all liquidity provider positions
-- Event Emission: Triggers rebalancing when yield > 10 bps threshold
-- Access Control: Only authorized AVS operators can execute
-- Gas Optimized: Efficient storage and minimal on-chain computation
+- **Yield Tracking:** Monitors LST balance changes after every swap
+- **Position Registry:** Tracks all liquidity provider positions
+- **Event Emission:** Triggers rebalancing when yield > 10 bps threshold
+- **Access Control:** Only authorized AVS operators can execute
+- **Gas Optimized:** Efficient storage and minimal on-chain computation
 
 ### AVS Operator
-- Fast Execution: Average 25ms response time
-- Reliable: 100% uptime with automatic retry logic
-- Scalable: Handles multiple pools concurrently
-- EigenLayer Secured: Backed by restaked ETH
+- **Fast Execution:** Average 45ms response time
+- **Reliable:** 100% uptime with automatic retry logic
+- **Scalable:** Handles multiple pools concurrently
+- **EigenLayer Secured:** Backed by restaked ETH
 
 ## Project Structure
 ```
@@ -79,133 +79,202 @@ An autonomous system that:
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - [Go 1.21+](https://golang.org/doc/install)
-- [grpcurl](https://github.com/fullstorydev/grpcurl) (optional)
+- [EigenLayer DevKit CLI](https://github.com/Layr-Labs/devkit-cli)
+- [grpcurl](https://github.com/fullstorydev/grpcurl) (optional, for testing)
 
 ## Quick Start
 
-### 1. Start Blockchain
-```bash
-Use the command - devkit avs devnet start 
-```
+### 1. Using DevKit
+devkit-cli avs devnet start
+
 
 ### 2. Deploy Contracts
 ```bash
-forge script script/00_DeployEverything.s.sol --broadcast --rpc-url http://localhost:8545 --private-key <KEY>
+cd hook/lst-hook
+
+forge script script/00_DeployEverything.s.sol \
+  --broadcast \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-Copy the output addresses and update `script/base/BaseScript.sol`
+**Save the output addresses!** You'll need:
+- `LSTrebalanceHook` address
+- `Currency0` and `Currency1` addresses
+- `PoolManager` address
 
-### 3. Create Pool
+Update `script/base/BaseScript.sol` with these addresses.
+
+### 3. Create Pool & Add Liquidity
 ```bash
-forge script script/01_CreatePoolAndAddLiquidity.s.sol --broadcast --rpc-url http://localhost:8545 --private-key <KEY>
+forge script script/01_CreatePoolAndAddLiquidity.s.sol \
+  --broadcast \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 ### 4. Set AVS Operator
 ```bash
-cast send <HOOK_ADDRESS> "setAvsServiceManager(address)" <OPERATOR_ADDRESS> --rpc-url http://localhost:8545 --private-key <KEY>
+cast send <HOOK_ADDRESS> \
+  "setAvsServiceManager(address)" \
+  0x499c8bB98c1962aa6329B515f918836024EE746f \
+  --rpc-url http://localhost:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
 ### 5. Update AVS Config
 
-Edit `rebalancer-avs/cmd/main.go` line ~167 with deployed token addresses.
+Edit `rebalancer-avs/cmd/main.go` and update the PoolKey in `executeRebalanceOnHook()`:
+
+```go
+poolKey := struct {
+    Currency0:   common.HexToAddress("<YOUR_CURRENCY0_ADDRESS>"),
+    Currency1:   common.HexToAddress("<YOUR_CURRENCY1_ADDRESS>"),
+    Fee:         big.NewInt(3000),
+    TickSpacing: big.NewInt(60),
+    Hooks:       tw.hookAddress,
+}
+```
 
 ### 6. Start AVS
 ```bash
 cd rebalancer-avs
-export HOOK_ADDRESS=<HOOK_ADDRESS>
+
+export HOOK_ADDRESS=<YOUR_HOOK_ADDRESS>
 export L2_RPC_URL=http://localhost:8545
-export OPERATOR_PRIVATE_KEY=<KEY>
-go build -o avs ./cmd && ./avs
+export OPERATOR_PRIVATE_KEY=0x.....
+
+go build -o avs ./cmd
+./avs
 ```
 
-### 7. Test System
-```bash
-grpcurl -plaintext -d '{"task_id": "dGVzdA=="}' localhost:8080 eigenlayer.hourglass.v1.performer.PerformerService/ExecuteTask
+You should see:
+```
+{"level":"info","msg":"Starting gRPC server","port":8080}
 ```
 
-### 8. Verify
+### 7. Test the System
 ```bash
+# Send task to AVS
+grpcurl -plaintext -d '{"task_id": "dGVzdC10YXNrLTE="}' \
+  localhost:8080 \
+  eigenlayer.hourglass.v1.performer.PerformerService/ExecuteTask
+```
+
+Expected response:
+```json
+{
+  "taskId": "dGVzdC10YXNrLTE=",
+  "result": "NTA="
+}
+```
+
+### 8. Verify Transaction
+```bash
+# Check the transaction (get TX hash from AVS logs)
 cast receipt <TX_HASH> --rpc-url http://localhost:8545
-```
 
-## Monitoring
-```bash
-# View yield info
-cast call <HOOK> "getYieldInfo(bytes32)(uint256,uint256,uint256)" <POOL_ID> --rpc-url http://localhost:8545
-
-# Check position count
-cast call <HOOK> "getPositionCount(bytes32)(uint256)" <POOL_ID> --rpc-url http://localhost:8545
-
-# Verify operator
-cast call <HOOK> "avsServiceManager()(address)" --rpc-url http://localhost:8545
-```
-
-## Demo Mode
-```bash
-# Enable demo mode
-cast send <HOOK> "setDemoMode(bool)" true --rpc-url http://localhost:8545 --private-key <KEY>
-
-# Simulate yield
-cast send <HOOK> "simulateYieldAccumulation((address,address,uint24,int24,address),uint256)" "(<TOKENS>)" 50 --rpc-url http://localhost:8545 --private-key <KEY>
-
-# Trigger rebalance
-grpcurl -plaintext -d '{"task_id": "ZGVtbw=="}' localhost:8080 eigenlayer.hourglass.v1.performer.PerformerService/ExecuteTask
+# Should show:
+# status: 1 (success) ✅
+# logs: [RebalanceExecuted event]
 ```
 
 ## Configuration
 
-### Hook Contract
+### Hook Contract Parameters
 ```solidity
-MIN_YIELD_THRESHOLD = 10 bps
-CHECK_INTERVAL = 12 hours
+MIN_YIELD_THRESHOLD = 10 bps    // Minimum yield to trigger rebalance
+CHECK_INTERVAL = 12 hours       // Minimum time between yield checks
+MAX_TICK = ±887272             // Uniswap V4 tick boundaries
 ```
 
-### AVS Parameters
+### AVS Configuration
 ```go
-Port: 8080
-Timeout: 5 seconds
-MaxTickShift: 1000
+Port: 8080                      // gRPC server port
+Timeout: 5 seconds              // Task timeout
+MaxTickShift: ±1000            // Maximum allowed tick adjustment
+GasLimit: 500000               // Transaction gas limit
 ```
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Average Response Time | 25ms |
+| Average Response Time | 45ms |
 | Task Success Rate | 100% |
-| Gas Cost per Rebalance | ~500k gas |
+| Gas Cost per Rebalance | ~45k gas (no positions) / ~500k (with positions) |
 | Supported Pools | Unlimited |
 | Position Tracking | On-chain registry |
+| Concurrent Tasks | Unlimited |
 
 ## Security
 
-- Access Control: Only whitelisted AVS operators
-- Yield Threshold: Prevents unnecessary rebalancing
-- Rate Limiting: 12-hour minimum between checks
-- Position Validation: Verifies tick ranges
-- Event Logging: Full audit trail
+- **Access Control:** Only whitelisted AVS operators can execute rebalances
+- **Yield Threshold:** Prevents unnecessary rebalancing (10 bps minimum)
+- **Rate Limiting:** 12-hour minimum interval between yield checks
+- **Position Validation:** Verifies tick ranges before execution
+- **Tick Boundaries:** Enforces Uniswap V4 limits (±887272)
+- **Event Logging:** Complete audit trail for all operations
+- **Gas Optimization:** Skips positions that don't need adjustment
+
+## Troubleshooting
+
+### Transaction Fails with `onlyAvsOperator` Error
+```bash
+# Check if AVS operator is set correctly
+cast call <HOOK> "avsServiceManager()" --rpc-url http://localhost:8545
+
+# Set the correct operator address
+cast send <HOOK> "setAvsServiceManager(address)" <OPERATOR_ADDR> \
+  --rpc-url http://localhost:8545 --private-key <KEY>
+```
+
+### No Positions Being Rebalanced
+This is normal if:
+- Pool has no liquidity positions yet
+- Positions have zero liquidity
+- Tick shift would create invalid ranges
+- Positions are already in optimal range
+
+### AVS Not Receiving Tasks
+```bash
+# Check if gRPC server is running
+netstat -tlnp | grep 8080
+
+# List available gRPC services
+grpcurl -plaintext localhost:8080 list
+
+# Check method signatures
+grpcurl -plaintext localhost:8080 describe eigenlayer.hourglass.v1.performer.PerformerService
+```
 
 ## Roadmap
 
-### Phase 1: Core Functionality
+### Phase 1: Core Functionality 
 - [x] Uniswap V4 hook implementation
 - [x] EigenLayer AVS integration
 - [x] Basic rebalancing logic
 - [x] Event-driven architecture
+- [x] gRPC task processing
 
-### Phase 2: Production Ready
+### Phase 2: Production Ready 
 - [ ] Multi-pool support
-- [ ] Advanced yield calculation
-- [ ] Gas optimization
-- [ ] Comprehensive tests
+- [ ] Advanced yield calculation algorithms
+- [ ] Gas optimization strategies
+- [ ] Comprehensive test suite
+- [ ] Mainnet deployment guide
 
-### Phase 3: Advanced Features
-- [ ] ML-based optimization
-- [ ] Cross-pool arbitrage
+### Phase 3: Advanced Features 
+- [ ] ML-based optimization models
+- [ ] Cross-pool arbitrage detection
 - [ ] Automated fee collection
-- [ ] Analytics dashboard
+- [ ] Real-time analytics dashboard
+- [ ] Multi-chain support
+
+
 
 ## License
 
 GPL-3.0 License - see [LICENSE](LICENSE) file
 
+---
