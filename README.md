@@ -123,8 +123,7 @@ An autonomous system that:
 
 ### 1. Start Blockchain
 ```bash
-cd hook/lst-hook
-anvil --state ./anvil-state.json --state-interval 1
+Use the command - devkit avs devnet start 
 ```
 
 ### 2. Deploy Contracts
