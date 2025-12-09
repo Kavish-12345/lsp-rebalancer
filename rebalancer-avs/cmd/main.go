@@ -59,7 +59,6 @@ func NewTaskWorker(logger *zap.Logger) *TaskWorker {
 		}
 	}
 
-	// NEW: Load hook address and private key
 	hookAddress := common.HexToAddress(os.Getenv("HOOK_ADDRESS"))
 	
 	pkHex := os.Getenv("OPERATOR_PRIVATE_KEY")
@@ -101,8 +100,8 @@ func (tw *TaskWorker) HandleTask(t *performerV1.TaskRequest) (*performerV1.TaskR
 		zap.String("taskId", string(t.TaskId)),
 	)
 
-	// Use mock yield data
-	mockYieldBps := uint64(50) // Changed to 50 to match your test
+	 
+	mockYieldBps := uint64(50) 
 
 	tw.logger.Sugar().Infow("📊 Task parameters",
 		"yieldBps", mockYieldBps,
@@ -116,12 +115,12 @@ func (tw *TaskWorker) HandleTask(t *performerV1.TaskRequest) (*performerV1.TaskR
 		"yieldBps", mockYieldBps,
 	)
 
-	// NEW: Execute rebalance on hook if L2 client is available
+	// Execute rebalance on hook if L2 client is available
 	if tw.l2Client != nil && tw.hookAddress != (common.Address{}) && tw.privateKey != nil {
 		err := tw.executeRebalanceOnHook(tickShift)
 		if err != nil {
 			tw.logger.Error("❌ Failed to execute rebalance on hook", zap.Error(err))
-			// Don't fail the task, just log the error
+
 		} else {
 			tw.logger.Info("✅ Rebalance executed successfully on hook!")
 		}
@@ -167,41 +166,40 @@ func (tw *TaskWorker) calculateTickShift(yieldBps uint64) int32 {
 	return tickShift
 }
 
-// NEW: Execute rebalance on the hook contract
+// Execute rebalance on the hook contract
 func (tw *TaskWorker) executeRebalanceOnHook(tickShift int32) error {
     tw.logger.Sugar().Infow("📤 Calling hook contract to execute rebalance",
         "hookAddress", tw.hookAddress.Hex(),
         "tickShift", tickShift,
     )
 
-    // Get chain ID
     chainID, err := tw.l2Client.ChainID(context.Background())
     if err != nil {
         return fmt.Errorf("failed to get chain ID: %w", err)
     }
 
-    // Create transactor
+
     auth, err := bind.NewKeyedTransactorWithChainID(tw.privateKey, chainID)
     if err != nil {
         return fmt.Errorf("failed to create transactor: %w", err)
     }
 
-    // Set gas limit
+   
     auth.GasLimit = 500000
 
     // ABI for executeRebalance function
     hookABI := `[{"inputs":[{"components":[{"internalType":"address","name":"currency0","type":"address"},{"internalType":"address","name":"currency1","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"int24","name":"tickSpacing","type":"int24"},{"internalType":"address","name":"hooks","type":"address"}],"internalType":"struct PoolKey","name":"","type":"tuple"},{"internalType":"int24","name":"","type":"int24"},{"internalType":"uint32","name":"","type":"uint32"}],"name":"executeRebalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]`
 
-    // Parse ABI
+   
     parsedABI, err := abi.JSON(strings.NewReader(hookABI))
     if err != nil {
         return fmt.Errorf("failed to parse ABI: %w", err)
     }
 
-    // Create bound contract
+    
     contract := bind.NewBoundContract(tw.hookAddress, parsedABI, tw.l2Client, tw.l2Client, tw.l2Client)
 
-    // Define the PoolKey struct
+ 
     poolKey := struct {
         Currency0   common.Address
         Currency1   common.Address

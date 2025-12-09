@@ -7,23 +7,23 @@
 [![EigenLayer](https://img.shields.io/badge/EigenLayer-AVS-purple)](https://eigenlayer.xyz/)
 [![Go](https://img.shields.io/badge/Go-1.21+-00ADD8)](https://golang.org/)
 
-## 🎯 The Problem
+## The Problem
 
 Liquid Staking Tokens (LSTs) like stETH and rETH continuously accrue staking rewards, causing their balance to grow over time. When these tokens are used as liquidity in Uniswap V4 pools, this yield accumulation causes positions to drift out of optimal price ranges.
 
 **Result:** Lower capital efficiency, reduced fee earnings, and manual rebalancing overhead.
 
-## 💡 Our Solution
+## Our Solution
 
 An **autonomous system** that:
-1. 🔍 **Monitors** LST yield accumulation in real-time
-2. 🧮 **Calculates** optimal position adjustments off-chain
-3. ⚡ **Executes** rebalancing transactions automatically
-4. 🛡️ **Secured** by EigenLayer's restaking infrastructure
+1. **Monitors** LST yield accumulation in real-time
+2. **Calculates** optimal position adjustments off-chain
+3. **Executes** rebalancing transactions automatically
+4. **Secured** by EigenLayer's restaking infrastructure
 
 **Response Time:** ~25ms from yield detection to on-chain execution
 
-## 🏗️ System Architecture
+## System Architecture
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                 Uniswap V4 Pool (LST/ETH)                │
@@ -81,7 +81,7 @@ An **autonomous system** that:
 - ✅ **Scalable**: Handles multiple pools concurrently
 - ✅ **EigenLayer Secured**: Backed by restaked ETH
 
-## 📦 Project Structure
+## Project Structure
 ```
 .
 ├── hook/
@@ -121,7 +121,7 @@ Install the following tools:
 - [Go 1.21+](https://golang.org/doc/install) - AVS operator runtime
 - [grpcurl](https://github.com/fullstorydev/grpcurl) - gRPC testing (optional)
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Step 1: Start Local Blockchain
 ```bash
@@ -130,7 +130,7 @@ cd hook/lst-hook
 anvil --state ./anvil-state.json --state-interval 1
 ```
 
-**Keep this terminal running** ✅
+**Keep this terminal running** 
 
 ---
 
@@ -153,7 +153,7 @@ token1 = 0xfbBB81A58049F92C340F00006D6B1BCbDfD5ec0d
 hookContract = 0x38194911eE4390e4cC52D97DE9bDDAa86AE25540
 ```
 
-📝 **Update `script/base/BaseScript.sol`** with these addresses
+**Update `script/base/BaseScript.sol`** with these addresses
 
 ---
 
@@ -182,7 +182,7 @@ cast send 0x38194911eE4390e4cC52D97DE9bDDAa86AE25540 \
   --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-**This authorizes the AVS operator to execute rebalancing transactions** 🔐
+**This authorizes the AVS operator to execute rebalancing transactions** 
 
 ---
 
@@ -239,13 +239,13 @@ grpcurl -plaintext -d '{"task_id": "eWllbGQtdGFzay0z"}' \
 
 **Watch Terminal 3 (AVS logs) for:**
 ```json
-{"level":"info","msg":"✅ Task validation passed","taskId":"yield-task-3"}
-{"level":"info","msg":"🔄 Processing LST rebalance task"}
-{"level":"info","msg":"📊 Task parameters","yieldBps":50}
-{"level":"info","msg":"✅ Calculated tick shift","tickShift":50}
-{"level":"info","msg":"📤 Calling hook contract to execute rebalance"}
-{"level":"info","msg":"✅ Transaction sent","txHash":"0x..."}
-{"level":"info","msg":"✅ Rebalance executed successfully on hook!"}
+{"level":"info","msg":"Task validation passed","taskId":"yield-task-3"}
+{"level":"info","msg":"Processing LST rebalance task"}
+{"level":"info","msg":"Task parameters","yieldBps":50}
+{"level":"info","msg":"Calculated tick shift","tickShift":50}
+{"level":"info","msg":"Calling hook contract to execute rebalance"}
+{"level":"info","msg":"Transaction sent","txHash":"0x..."}
+{"level":"info","msg":"Rebalance executed successfully on hook!"}
 ```
 
 ---
@@ -264,7 +264,7 @@ cast receipt 0x67803a936c0e6c4644861fdc4d66e329f3540288fb078198e38ce4aeb4faa586 
 
 ---
 
-## 📊 Monitoring & Verification
+## Monitoring & Verification
 
 ### Check Hook State
 ```bash
@@ -288,7 +288,7 @@ cast call 0x38194911eE4390e4cC52D97DE9bDDAa86AE25540 \
 
 ---
 
-## 🎬 Demo Mode (For Testing)
+## Demo Mode (For Testing)
 
 Enable demo mode for testing without real LST tokens:
 ```bash
@@ -323,7 +323,7 @@ MaxTickShift: 1000              // Maximum position shift per rebalance
 
 ---
 
-## 📈 Performance Metrics
+## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
@@ -335,7 +335,7 @@ MaxTickShift: 1000              // Maximum position shift per rebalance
 
 ---
 
-## 🔐 Security Features
+## Security Features
 
 - ✅ **Access Control**: Only whitelisted AVS operators can execute
 - ✅ **Yield Threshold**: Prevents unnecessary rebalancing
@@ -347,19 +347,19 @@ MaxTickShift: 1000              // Maximum position shift per rebalance
 
 ## 🛣️ Roadmap
 
-### Phase 1: Core Functionality ✅
+### Phase 1: Core Functionality 
 - [x] Uniswap V4 hook implementation
 - [x] EigenLayer AVS integration
 - [x] Basic rebalancing logic
 - [x] Event-driven architecture
 
-### Phase 2: Production Ready 🚧
+### Phase 2: Production Ready 
 - [ ] Multi-pool support
 - [ ] Advanced yield calculation models
 - [ ] Gas optimization
 - [ ] Comprehensive test coverage
 
-### Phase 3: Advanced Features 🔮
+### Phase 3: Advanced Features 
 - [ ] ML-based position optimization
 - [ ] Cross-pool arbitrage detection
 - [ ] Automated fee collection
@@ -373,11 +373,4 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ---
 
-## 🙏 Acknowledgments
-
-- [Uniswap V4](https://uniswap.org/) - Next-generation AMM protocol
-- [EigenLayer](https://eigenlayer.xyz/) - Restaking infrastructure
-- [Foundry](https://book.getfoundry.sh/) - Smart contract development toolkit
-
----
 
