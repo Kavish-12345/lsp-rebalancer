@@ -8,10 +8,9 @@ import {BaseScript} from "./base/BaseScript.sol";
 
 import {LSTrebalanceHook} from "../src/Rebalance.sol";
 
-/// @notice Mines the address and deploys the Counter.sol Hook contract
-contract DeployHookScript is BaseScript {
-   // In script/00_DeployHook.s.sol
 
+contract DeployHookScript is BaseScript {
+  
 function run() public {
     uint160 flags = uint160(
         Hooks.AFTER_INITIALIZE_FLAG | 

@@ -19,7 +19,7 @@ import {AddressConstants} from "hookmate/constants/AddressConstants.sol";
 
 import {Deployers} from "test/utils/Deployers.sol";
 
-/// @notice Shared configuration between scripts
+
 contract BaseScript is Script, Deployers {
     address immutable deployerAddress;
 

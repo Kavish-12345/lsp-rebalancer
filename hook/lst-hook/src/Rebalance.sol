@@ -74,12 +74,12 @@ contract LSTrebalanceHook is BaseHook {
     error insufficientYield();
     error noPositionsToRebalance();
 
-    // In src/Rebalance.sol
+
 
     constructor(IPoolManager _poolManager) BaseHook(_poolManager) {
-      hookOwner = msg.sender;  // Remove this line completely
+      hookOwner = msg.sender;   
 }
-    address public avsServiceManager; // This will be the AVS contract deployed by DevKit
+    address public avsServiceManager; 
 
     function setAvsServiceManager(address _serviceManager) external {
        
@@ -205,7 +205,7 @@ contract LSTrebalanceHook is BaseHook {
         PoolId poolId = key.toId();
 
         if (block.timestamp - lastCheckTime[poolId] <= CHECK_INTERVAL) {
-            // ✅ Add equals
+          
             return;
         }
         uint256 currentBalance = _getLSTBalance(key);
@@ -274,7 +274,7 @@ contract LSTrebalanceHook is BaseHook {
         uint256 idx = positionIndex[poolId][owner];
 
         if (idx == 0) {
-            // This is a NEW position for this owner
+          
             positions[poolId].push(
                 LpPosition({
                     owner: owner,
@@ -283,7 +283,7 @@ contract LSTrebalanceHook is BaseHook {
                     liquidity: liquidity
                 })
             );
-            // Store as 1-based index (array position + 1)
+           
             positionIndex[poolId][owner] = positions[poolId].length;
         } else {
             // This owner already has a position, UPDATE it
@@ -342,10 +342,6 @@ contract LSTrebalanceHook is BaseHook {
         demoMode = _enabled;
     }
 
-    // Add after setDemoMode() function
-
-    
-    
 
     function simulateYieldAccumulation(
         PoolKey calldata key,
