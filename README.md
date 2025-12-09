@@ -24,46 +24,9 @@ An autonomous system that:
 **Response Time:** ~25ms from yield detection to on-chain execution
 
 ## System Architecture
-```
-┌──────────────────────────────────────────────────────────┐
-│                 Uniswap V4 Pool (LST/ETH)                │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         │ Hook monitors every swap
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│           LSTrebalanceHook Smart Contract                │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ • Tracks LST balance changes                       │  │
-│  │ • Calculates yield in basis points                 │  │
-│  │ • Registers & manages LP positions                 │  │
-│  │ • Emits RebalanceRequested(yield, poolId)          │  │
-│  └────────────────────────────────────────────────────┘  │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         │ Event-driven trigger
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│              EigenLayer AVS Operator (Go)                │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ 1. Receives task via gRPC                          │  │
-│  │ 2. Calculates optimal tick shift                   │  │
-│  │ 3. Constructs rebalance transaction                │  │
-│  │ 4. Executes on-chain via hook                      │  │
-│  └────────────────────────────────────────────────────┘  │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         │ executeRebalance(poolKey, tickShift)
-                         ▼
-┌──────────────────────────────────────────────────────────┐
-│           Hook: Position Rebalancing Execution           │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │ • Verify AVS operator signature                    │  │
-│  │ • Remove liquidity from old range                  │  │
-│  │ • Add liquidity at new optimal range               │  │
-│  │ • Emit RebalanceExecuted(count, shift)             │  │
-│  └────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
+
+![System Architecture](assets/architecture.png)
+
 ```
 
 ## Key Features
