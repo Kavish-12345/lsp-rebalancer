@@ -312,14 +312,6 @@ grpcurl -plaintext -d '{"task_id": "ZGVtby15aWVsZA=="}' \
   eigenlayer.hourglass.v1.performer.PerformerService/ExecuteTask
 ```
 
----
-
-## 🔧 Configuration Reference
-
-### Hook Contract Constants
-```solidity
-MIN_YIELD_THRESHOLD = 10 bps    // Minimum yield to trigger rebalance
-CHECK_INTERVAL = 12 hours       // Minimum time between yield checks
 ```
 
 ### AVS Parameters
@@ -353,22 +345,6 @@ MaxTickShift: 1000              // Maximum position shift per rebalance
 
 ---
 
-## 🧪 Testing
-```bash
-# Run contract tests
-cd hook/lst-hook
-forge test -vvv
-
-# Test AVS operator
-cd rebalancer-avs
-go test ./...
-
-# Integration test
-./scripts/integration-test.sh
-```
-
----
-
 ## 🛣️ Roadmap
 
 ### Phase 1: Core Functionality ✅
@@ -391,18 +367,6 @@ go test ./...
 
 ---
 
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
 ## 📄 License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
@@ -417,42 +381,3 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 
 ---
 
-## 📞 Support & Contact
-
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
-- **Twitter**: [@your_handle](https://twitter.com/your_handle)
-
----
-
-## ⚡ Quick Commands Reference
-```bash
-# Start blockchain
-anvil --state ./anvil-state.json --state-interval 1
-
-# Deploy contracts
-forge script script/00_DeployEverything.s.sol --broadcast --rpc-url http://localhost:8545 --private-key <KEY>
-
-# Create pool
-forge script script/01_CreatePoolAndAddLiquidity.s.sol --broadcast --rpc-url http://localhost:8545 --private-key <KEY>
-
-# Set AVS operator
-cast send <HOOK> "setAvsServiceManager(address)" <OPERATOR> --rpc-url http://localhost:8545 --private-key <KEY>
-
-# Start AVS
-export HOOK_ADDRESS=<HOOK> L2_RPC_URL=http://localhost:8545 OPERATOR_PRIVATE_KEY=<KEY>
-go build -o avs ./cmd && ./avs
-
-# Send task
-grpcurl -plaintext -d '{"task_id": "dGVzdA=="}' localhost:8080 eigenlayer.hourglass.v1.performer.PerformerService/ExecuteTask
-```
-
----
-
-<div align="center">
-
-**Built with ❤️ for EigenLayer & Uniswap V4**
-
-[⭐ Star this repo](https://github.com/your-repo) • [🐛 Report Bug](https://github.com/your-repo/issues) • [💡 Request Feature](https://github.com/your-repo/issues)
-
-</div>
