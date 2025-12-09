@@ -64,17 +64,6 @@ An autonomous system that:
     └── go.mod
 ```
 
-## Technology Stack
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Smart Contracts | Solidity 0.8.26 | Hook logic & position management |
-| Pool Protocol | Uniswap V4 | Liquidity provisioning |
-| AVS Framework | EigenLayer DevKit | Off-chain operator infrastructure |
-| Backend | Go 1.21+ | Task processing & execution |
-| Blockchain | Ethereum (Anvil) | Local development & testing |
-| Communication | gRPC | Task queue & messaging |
-
 ## Prerequisites
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
@@ -85,7 +74,7 @@ An autonomous system that:
 ## Quick Start
 
 ### 1. Using DevKit
-devkit-cli avs devnet start
+devkit avs devnet start
 
 
 ### 2. Deploy Contracts
@@ -207,46 +196,6 @@ GasLimit: 500000               // Transaction gas limit
 | Position Tracking | On-chain registry |
 | Concurrent Tasks | Unlimited |
 
-## Security
-
-- **Access Control:** Only whitelisted AVS operators can execute rebalances
-- **Yield Threshold:** Prevents unnecessary rebalancing (10 bps minimum)
-- **Rate Limiting:** 12-hour minimum interval between yield checks
-- **Position Validation:** Verifies tick ranges before execution
-- **Tick Boundaries:** Enforces Uniswap V4 limits (±887272)
-- **Event Logging:** Complete audit trail for all operations
-- **Gas Optimization:** Skips positions that don't need adjustment
-
-## Troubleshooting
-
-### Transaction Fails with `onlyAvsOperator` Error
-```bash
-# Check if AVS operator is set correctly
-cast call <HOOK> "avsServiceManager()" --rpc-url http://localhost:8545
-
-# Set the correct operator address
-cast send <HOOK> "setAvsServiceManager(address)" <OPERATOR_ADDR> \
-  --rpc-url http://localhost:8545 --private-key <KEY>
-```
-
-### No Positions Being Rebalanced
-This is normal if:
-- Pool has no liquidity positions yet
-- Positions have zero liquidity
-- Tick shift would create invalid ranges
-- Positions are already in optimal range
-
-### AVS Not Receiving Tasks
-```bash
-# Check if gRPC server is running
-netstat -tlnp | grep 8080
-
-# List available gRPC services
-grpcurl -plaintext localhost:8080 list
-
-# Check method signatures
-grpcurl -plaintext localhost:8080 describe eigenlayer.hourglass.v1.performer.PerformerService
-```
 
 ## Roadmap
 
