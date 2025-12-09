@@ -26,31 +26,38 @@ contract BaseScript is Script, Deployers {
     /////////////////////////////////////
     // --- UPDATED ADDRESSES --- //
     /////////////////////////////////////
-    IERC20 internal constant token0 = IERC20(0x8C4c13856e935d33c0d3C3EF5623F2339f17d4f5);
-    IERC20 internal constant token1 = IERC20(0xfbBB81A58049F92C340F00006D6B1BCbDfD5ec0d);
-    IHooks constant hookContract = IHooks(0x38194911eE4390e4cC52D97DE9bDDAa86AE25540);
+    IERC20 internal constant token0 =
+        IERC20(0x8C4c13856e935d33c0d3C3EF5623F2339f17d4f5);
+    IERC20 internal constant token1 =
+        IERC20(0xfbBB81A58049F92C340F00006D6B1BCbDfD5ec0d);
+    IHooks constant hookContract =
+        IHooks(0x38194911eE4390e4cC52D97DE9bDDAa86AE25540);
 
     Currency immutable currency0;
     Currency immutable currency1;
 
     constructor() {
-    // Use deployed addresses - DO NOT call deployArtifacts()!
-    permit2 = IPermit2(AddressConstants.getPermit2Address());
-    poolManager = IPoolManager(0x0D9BAf34817Fccd3b3068768E5d20542B66424A5);
-    positionManager = IPositionManager(0x90aAE8e3C8dF1d226431D0C2C7feAaa775fAF86C);
-    swapRouter = IUniswapV4Router04(payable(0xB61598fa7E856D43384A8fcBBAbF2Aa6aa044FfC));
+        // Use deployed addresses - DO NOT call deployArtifacts()!
+        permit2 = IPermit2(AddressConstants.getPermit2Address());
+        poolManager = IPoolManager(0x0D9BAf34817Fccd3b3068768E5d20542B66424A5);
+        positionManager = IPositionManager(
+            0x90aAE8e3C8dF1d226431D0C2C7feAaa775fAF86C
+        );
+        swapRouter = IUniswapV4Router04(
+            payable(0xB61598fa7E856D43384A8fcBBAbF2Aa6aa044FfC)
+        );
 
-    deployerAddress = getDeployer();
-    (currency0, currency1) = getCurrencies();
+        deployerAddress = getDeployer();
+        (currency0, currency1) = getCurrencies();
 
-    vm.label(address(permit2), "Permit2");
-    vm.label(address(poolManager), "V4PoolManager");
-    vm.label(address(positionManager), "V4PositionManager");
-    vm.label(address(swapRouter), "V4SwapRouter");
-    vm.label(address(token0), "Currency0");
-    vm.label(address(token1), "Currency1");
-    vm.label(address(hookContract), "HookContract");
-}
+        vm.label(address(permit2), "Permit2");
+        vm.label(address(poolManager), "V4PoolManager");
+        vm.label(address(positionManager), "V4PositionManager");
+        vm.label(address(swapRouter), "V4SwapRouter");
+        vm.label(address(token0), "Currency0");
+        vm.label(address(token1), "Currency1");
+        vm.label(address(hookContract), "HookContract");
+    }
 
     function _etch(address target, bytes memory bytecode) internal override {
         if (block.chainid == 31337) {

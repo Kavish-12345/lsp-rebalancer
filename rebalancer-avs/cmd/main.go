@@ -6,6 +6,9 @@ import (
 	"math/big"
 	"os"
 	"time"
+	"crypto/ecdsa"
+"strings"
+"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/performer/contracts"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/performer/server"
@@ -31,7 +34,7 @@ type TaskWorker struct {
 	l1Client      *ethclient.Client
 	l2Client      *ethclient.Client
 	hookAddress   common.Address
-	privateKey    *crypto.PrivateKey
+	privateKey  *ecdsa.PrivateKey
 }
 
 func NewTaskWorker(logger *zap.Logger) *TaskWorker {
@@ -60,13 +63,13 @@ func NewTaskWorker(logger *zap.Logger) *TaskWorker {
 	hookAddress := common.HexToAddress(os.Getenv("HOOK_ADDRESS"))
 	
 	pkHex := os.Getenv("OPERATOR_PRIVATE_KEY")
-	var privateKey *crypto.PrivateKey
-	if pkHex != "" {
-		privateKey, err = crypto.HexToECDSA(pkHex)
-		if err != nil {
-			logger.Error("Failed to load private key", zap.Error(err))
-		}
-	}
+	 var privateKey *ecdsa.PrivateKey
+	pk, err := crypto.HexToECDSA(pkHex)
+if err != nil {
+    logger.Error("Failed to load private key", zap.Error(err))
+} else {
+    privateKey = pk
+}
 
 	return &TaskWorker{
 		logger:        logger,
@@ -166,69 +169,61 @@ func (tw *TaskWorker) calculateTickShift(yieldBps uint64) int32 {
 
 // NEW: Execute rebalance on the hook contract
 func (tw *TaskWorker) executeRebalanceOnHook(tickShift int32) error {
-	tw.logger.Sugar().Infow("📤 Calling hook contract to execute rebalance",
-		"hookAddress", tw.hookAddress.Hex(),
-		"tickShift", tickShift,
-	)
+    tw.logger.Sugar().Infow("📤 Calling hook contract to execute rebalance",
+        "hookAddress", tw.hookAddress.Hex(),
+        "tickShift", tickShift,
+    )
 
-	// Get chain ID
-	chainID, err := tw.l2Client.ChainID(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
-	}
+    // Get chain ID
+    chainID, err := tw.l2Client.ChainID(context.Background())
+    if err != nil {
+        return fmt.Errorf("failed to get chain ID: %w", err)
+    }
 
-	// Create transactor
-	auth, err := bind.NewKeyedTransactorWithChainID(tw.privateKey, chainID)
-	if err != nil {
-		return fmt.Errorf("failed to create transactor: %w", err)
-	}
+    // Create transactor
+    auth, err := bind.NewKeyedTransactorWithChainID(tw.privateKey, chainID)
+    if err != nil {
+        return fmt.Errorf("failed to create transactor: %w", err)
+    }
 
-	// Set gas limit
-	auth.GasLimit = 500000
+    // Set gas limit
+    auth.GasLimit = 500000
 
-	// Define the PoolKey struct (mock values for demo)
-	poolKey := struct {
-		Currency0   common.Address
-		Currency1   common.Address
-		Fee         *big.Int
-		TickSpacing *big.Int
-		Hooks       common.Address
-	}{
-		Currency0:   common.HexToAddress("0x0000000000000000000000000000000000000001"),
-		Currency1:   common.HexToAddress("0x0000000000000000000000000000000000000002"),
-		Fee:         big.NewInt(3000),
-		TickSpacing: big.NewInt(60),
-		Hooks:       tw.hookAddress,
-	}
+    // ABI for executeRebalance function
+    hookABI := `[{"inputs":[{"components":[{"internalType":"address","name":"currency0","type":"address"},{"internalType":"address","name":"currency1","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"int24","name":"tickSpacing","type":"int24"},{"internalType":"address","name":"hooks","type":"address"}],"internalType":"struct PoolKey","name":"","type":"tuple"},{"internalType":"int24","name":"","type":"int24"},{"internalType":"uint32","name":"","type":"uint32"}],"name":"executeRebalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]`
 
-	// ABI for executeRebalance function
-	hookABI := `[{"inputs":[{"components":[{"internalType":"address","name":"currency0","type":"address"},{"internalType":"address","name":"currency1","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"int24","name":"tickSpacing","type":"int24"},{"internalType":"address","name":"hooks","type":"address"}],"internalType":"struct PoolKey","name":"","type":"tuple"},{"internalType":"int24","name":"","type":"int24"},{"internalType":"uint32","name":"","type":"uint32"}],"name":"executeRebalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"}]`
+    // Parse ABI
+    parsedABI, err := abi.JSON(strings.NewReader(hookABI))
+    if err != nil {
+        return fmt.Errorf("failed to parse ABI: %w", err)
+    }
 
-	parsedABI, err := bind.NewBoundContract(tw.hookAddress, bind.NewJSONABI(hookABI), tw.l2Client, tw.l2Client, tw.l2Client).ABI()
-	if err != nil {
-		return fmt.Errorf("failed to parse ABI: %w", err)
-	}
+    // Create bound contract
+    contract := bind.NewBoundContract(tw.hookAddress, parsedABI, tw.l2Client, tw.l2Client, tw.l2Client)
 
-	// Pack the function call
-	data, err := parsedABI.Pack("executeRebalance", poolKey, big.NewInt(int64(tickShift)), uint32(0))
-	if err != nil {
-		return fmt.Errorf("failed to pack function call: %w", err)
-	}
+    // Define the PoolKey struct
+    poolKey := struct {
+        Currency0   common.Address
+        Currency1   common.Address
+        Fee         *big.Int
+        TickSpacing *big.Int
+        Hooks       common.Address
+    }{
+        Currency0:   common.HexToAddress("0x8C4c13856e935d33c0d3C3EF5623F2339f17d4f5"),
+        Currency1:   common.HexToAddress("0xfbBB81A58049F92C340F00006D6B1BCbDfD5ec0d"),
+        Fee:         big.NewInt(3000),
+        TickSpacing: big.NewInt(60),
+        Hooks:       tw.hookAddress,
+    }
 
-	// Send transaction
-	tx := &bind.TransactOpts{
-		From:     auth.From,
-		Signer:   auth.Signer,
-		GasLimit: auth.GasLimit,
-	}
+    // Call the contract
+    tx, err := contract.Transact(auth, "executeRebalance", poolKey, big.NewInt(int64(tickShift)), uint32(0))
+    if err != nil {
+        return fmt.Errorf("failed to send transaction: %w", err)
+    }
 
-	_, err = tw.l2Client.SendTransaction(context.Background(), bind.NewBoundContract(tw.hookAddress, parsedABI, tw.l2Client, tw.l2Client, tw.l2Client).Transact(tx, "executeRebalance", poolKey, big.NewInt(int64(tickShift)), uint32(0)))
-	if err != nil {
-		return fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	tw.logger.Info("✅ Transaction sent to hook contract")
-	return nil
+    tw.logger.Sugar().Infow("✅ Transaction sent to hook contract", "txHash", tx.Hash().Hex())
+    return nil
 }
 
 func main() {

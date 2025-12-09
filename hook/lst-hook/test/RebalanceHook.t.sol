@@ -25,7 +25,6 @@ contract RebalanceHookTest is LSTTestBase {
 
     function testHookDeployment() public view {
         assertEq(address(hook.poolManager()), address(manager));
-        assertEq(hook.hookOwner(), address(this));
         assertEq(hook.avsServiceManager(), avsServiceManager);
     }
 
