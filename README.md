@@ -64,13 +64,6 @@ An autonomous system that:
     └── go.mod
 ```
 
-## Prerequisites
-
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- [Go 1.21+](https://golang.org/doc/install)
-- [EigenLayer DevKit CLI](https://github.com/Layr-Labs/devkit-cli)
-- [grpcurl](https://github.com/fullstorydev/grpcurl) (optional, for testing)
-
 ## Quick Start
 
 ### 1. Using DevKit
@@ -184,17 +177,6 @@ Timeout: 5 seconds              // Task timeout
 MaxTickShift: ±1000            // Maximum allowed tick adjustment
 GasLimit: 500000               // Transaction gas limit
 ```
-
-## Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| Average Response Time | 45ms |
-| Task Success Rate | 100% |
-| Gas Cost per Rebalance | ~45k gas (no positions) / ~500k (with positions) |
-| Supported Pools | Unlimited |
-| Position Tracking | On-chain registry |
-| Concurrent Tasks | Unlimited |
 
 
 ## Roadmap
