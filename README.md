@@ -43,16 +43,6 @@ An autonomous system that:
 - **Scalable:** Handles multiple pools concurrently
 - **EigenLayer Secured:** Backed by restaked ETH
 
-## Demo
-
-<div>
-    <a href="https://www.loom.com/share/b468c970dfde40a785371888673f59eb">
-      <p>Helix : UHI-7 Submission - Watch Video</p>
-    </a>
-    <a href="https://www.loom.com/share/b468c970dfde40a785371888673f59eb">
-      <img style="width:100%;" src="https://cdn.loom.com/sessions/thumbnails/0ec9cea34bfb45fdafd271d23b51ff6e-308a8b9aaffc880b-full-play.gif">
-    </a>
-</div>
 
 ## Project Structure
 ```
