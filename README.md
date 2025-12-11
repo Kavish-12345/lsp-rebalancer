@@ -2,10 +2,10 @@
 
 > Automated Uniswap V4 liquidity position rebalancing for Liquid Staking Tokens using EigenLayer AVS
 
-[![Solidity](https://img.shields.io/badge/Solidity-^0.8.26-blue)](https://soliditylang.org/)
-[![Uniswap V4](https://img.shields.io/badge/Uniswap-V4-pink)](https://uniswap.org/)
-[![EigenLayer](https://img.shields.io/badge/EigenLayer-AVS-purple)](https://eigenlayer.xyz/)
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8)](https://golang.org/)
+![Solidity](https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity&logoColor=white)
+![Ethereum](https://img.shields.io/badge/Ethereum-3C3C3D?style=for-the-badge&logo=ethereum&logoColor=white)
+![Uniswap](https://img.shields.io/badge/Uniswap-FF007A?style=for-the-badge&logo=uniswap&logoColor=white)
+![EigenLayer](https://img.shields.io/badge/EigenLayer-AVS-blue?style=for-the-badge)
 
 ## The Problem
 
